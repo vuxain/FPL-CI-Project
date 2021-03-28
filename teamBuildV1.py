@@ -39,17 +39,17 @@ async def main():
             
             
         def bound(u, knapsackWeight, items):
-        
+
             if (u.weight >= knapsackWeight):
                 return 0
-            totalValue = u.value 
+            totalValue = u.value
             l = u.level + 1
             totalWeight = u.weight
-            
+
             tempList =  copy.deepcopy(u.positionState)
 
-            
-            while l < len(items)  or tempList != [0,0,0,0,0] :
+
+            while l < len(items)  and tempList != [0,0,0,0,0] :
 
                 if  tempList[items[l].element_type] <=0:
                     l+=1
@@ -71,12 +71,19 @@ async def main():
             l[index] -= 1
          
             return l
+
+        def positionStateCheck ( array):
+            for x in array:
+                if x<0:
+                    return 0
+            return 1
         
         
         def bnb(knapsackWeight, items):
+
             Q = queue.Queue()
-            # pogodno je inicijalizovati cvorom na nivou -1
-            u = Node(-1, 0, 0, None, 0, None, [0,5,2,5,1])
+
+            u = Node(-1, 0, 0, None, 0, None, [0,2,5,5,3])
             Q.put(u)
             maxValue = 0
             finalNode = None
@@ -87,14 +94,23 @@ async def main():
                 
                 if (u.level == len(items) - 1): 
                     continue
-                
-                
-                uCopyPositionState =  copy.deepcopy(u.positionState) 
-                v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost/10, u.value + items[u.level + 1].total_points, u, 1, items[u.level + 1].element_type,decrementList(uCopyPositionState,items[u.level + 1].element_type))
-                
 
-                if v.positionState[v.position] >=0:
-                    if v.weight <= knapsackWeight and v.value > maxValue   :
+
+
+                uCopyPositionState =  copy.deepcopy(u.positionState) 
+                vPotentinalState = decrementList(uCopyPositionState, items[u.level + 1].element_type)
+
+
+                # If there is space for the player the position or in the team overall
+                if vPotentinalState[items[u.level + 1].element_type] >=0 and positionStateCheck(vPotentinalState):
+
+                    # Left node - Player inserted
+
+                    v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost / 10,
+                             u.value + items[u.level + 1].total_points, u, 1, items[u.level + 1].element_type,
+                             vPotentinalState)
+
+                    if v.weight <= knapsackWeight and v.value > maxValue:
                             maxValue = v.value
                             finalNode = v
 
@@ -104,33 +120,21 @@ async def main():
                         Q.put(v)
                         #print(v.positionState)
 
-            
-            # if (v.positionState == [0,0,0,0,0]):
-               
-            #     print ('AAAAAAAAAAAAAA')
-            #     break 
-                
+                # Right node - Player not inserted
 
                 v = Node(u.level + 1, u.weight, u.value, u, 0 , items[u.level + 1].element_type, u.positionState)
                 v.bound = bound(v, knapsackWeight, items) 
                 if (v.bound > maxValue):
                     Q.put(v)
 
-            
-                # print (items[v.level])
-                #print(v.positionState)
-            
-            suma = 0.0
-            
-            while (finalNode.parent != None):
+
+            team = []
+            while (finalNode != None):
                 if(finalNode.inserted == 1):
-                    print (items[finalNode.level])
-                    suma += items[finalNode.level].now_cost/10
+                    team.append(items[finalNode.level])
                 finalNode = finalNode.parent
-            print(suma)            
-        
-    
-            return maxValue
+
+            return [maxValue,team]
                 
         
         
@@ -139,15 +143,36 @@ async def main():
         
         players = await fpl.get_players()
                     
-        playersSorted = sorted(players, key=lambda x: x.total_points/(x.now_cost / 10) , reverse=True)
-        print(len(playersSorted))
-        # for x in playersSorted[0:20]:
+        playersSorted = sorted(players, key=lambda x: x.total_points , reverse=True)
+
+
+
+        filteredParameters = [0,15,20,20,20]
+        filteredPlayers = []
+        for x in playersSorted:
+            if filteredParameters == [0,0,0,0,0]:
+                break
+            if filteredParameters[x.element_type] > 0 :
+                filteredPlayers.append(x)
+                filteredParameters[x.element_type] -= 1
+
+        # for x in filteredPlayers:
         #     print(x)
-            
+        # print(len(filteredPlayers))
+
         print('\n\n')
-        
+
+        #print (positionStateCheck([0,0,-1,0,0]))
         #print (decrementList([1,1,1,1],playersSorted[200].element_type))
-        print('Maksimalna vrednost:', bnb(knapsackWeight, playersSorted))
+
+        [value,team] = bnb(knapsackWeight, filteredPlayers)
+
+        print ("Vrednost tima je", value)
+        suma=0.0
+        for x in team:
+            print(x)
+            suma+= x.now_cost/10
+        print("Cena tima je", suma)
 
         
 
