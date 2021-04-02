@@ -4,7 +4,6 @@ import copy
 import asyncio
 import aiohttp
 from fpl import FPL
-from prettytable import PrettyTable
 
 
 class Node:
@@ -75,8 +74,8 @@ def bnb(knapsackWeight, items):
         uCopyPositionState = copy.deepcopy(u.positionState)
         vPotentialState = decrementList(uCopyPositionState, items[u.level + 1].element_type)
 
-        # If there is space for the player the position or in the team overall
-        if vPotentialState[items[u.level + 1].element_type] >= 0 and positionStateCheck(vPotentialState):
+        # If there is space for the new players position
+        if vPotentialState[items[u.level + 1].element_type] >= 0:
             # Left node - Player inserted
             v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost / 10,
                      u.value + items[u.level + 1].total_points, u, 1, items[u.level + 1].element_type,
@@ -90,11 +89,13 @@ def bnb(knapsackWeight, items):
             if v.bound > maxValue:
                 Q.put(v)
 
-        # Right node - Player not inserted
-        v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type, u.positionState)
-        v.bound = bound(v, knapsackWeight, items)
-        if v.bound > maxValue:
-            Q.put(v)
+        # If the team is full, there is no need for a deeper search
+        if u.positionState != [0, 0, 0, 0, 0]:
+            # Right node - Player not inserted
+            v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type, u.positionState)
+            v.bound = bound(v, knapsackWeight, items)
+            if v.bound > maxValue:
+                Q.put(v)
 
     team = []
     while finalNode is not None:
@@ -112,7 +113,7 @@ async def main():
         players = await fpl.get_players()
         playersSorted = sorted(players, key=lambda x: x.total_points, reverse=True)
 
-        filteredParameters = [0, 15, 20, 20, 20]
+        filteredParameters = [0, 25, 40, 40, 40]
         filteredPlayers = []
         for x in playersSorted:
             if filteredParameters == [0, 0, 0, 0, 0]:
@@ -124,12 +125,12 @@ async def main():
         knapsackWeight = 100.0
         [value, team] = bnb(knapsackWeight, filteredPlayers)
 
-        print("Vrednost tima je:", value)
-        amount = sum([x.now_cost/10 for x in team])
+        print("Team value:", value)
+        price = sum([x.now_cost/10 for x in team])
         team = sorted(team, key=lambda x: x.element_type)
 
         [print(x) for x in team]
-        print("Cena tima je:", amount)
+        print("Team price:", price)
 
 
 if __name__ == "__main__":
