@@ -111,25 +111,27 @@ async def main():
         fpl = FPL(session)
 
         players = await fpl.get_players()
-        playersSorted = sorted(players, key=lambda x: x.total_points, reverse=True)
+        # Filtering out the players that are unavailable or injured
+        playersSorted = sorted(filter(lambda player: player.status != 'i' and player.status != 'u', players),
+                               key=lambda x: x.total_points, reverse=True)
 
-        filteredParameters = [0, 25, 40, 40, 40]
-        filteredPlayers = []
-        for x in playersSorted:
-            if filteredParameters == [0, 0, 0, 0, 0]:
-                break
-            if filteredParameters[x.element_type] > 0:
-                filteredPlayers.append(x)
-                filteredParameters[x.element_type] -= 1
+        # filteredParameters = [0, 25, 40, 40, 40]
+        # filteredPlayers = []
+        # for x in playersSorted:
+        #     if filteredParameters == [0, 0, 0, 0, 0]:
+        #         break
+        #     if filteredParameters[x.element_type] > 0:
+        #         filteredPlayers.append(x)
+        #         filteredParameters[x.element_type] -= 1
 
         knapsackWeight = 100.0
-        [value, team] = bnb(knapsackWeight, filteredPlayers)
+        [value, team] = bnb(knapsackWeight, playersSorted)
 
         print("Team value:", value)
-        price = sum([x.now_cost/10 for x in team])
+        price = sum([x.now_cost / 10 for x in team])
         team = sorted(team, key=lambda x: x.element_type)
 
-        [print(x) for x in team]
+        [print(x, x.status, x.total_points, x.now_cost / 10) for x in team]
         print("Team price:", price)
 
 
