@@ -6,6 +6,12 @@ import aiohttp
 from fpl import FPL
 
 
+# Evaluation functions:
+
+
+
+#                               ------- BRANCH AND BOUND -------
+
 class Node:
 
     def __init__(self, level, weight, value, parent, inserted, position, positionState):
@@ -48,7 +54,7 @@ def bound(u, knapsackWeight, items):
             continue
         elif totalWeight + items[l].now_cost / 10 <= knapsackWeight:
             totalWeight += items[l].now_cost / 10
-            totalValue += items[l].total_points
+            totalValue += FdrEval(items[l])
             decrementList(tempList, items[l].element_type)
             l += 1
         else:
@@ -78,7 +84,7 @@ def bnb(knapsackWeight, items):
         if vPotentialState[items[u.level + 1].element_type] >= 0:
             # Left node - Player inserted
             v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost / 10,
-                     u.value + items[u.level + 1].total_points, u, 1, items[u.level + 1].element_type,
+                     u.value + FdrEval(items[u.level + 1]), u, 1, items[u.level + 1].element_type,
                      vPotentialState)
 
             if v.weight <= knapsackWeight and v.value > maxValue:
@@ -105,35 +111,74 @@ def bnb(knapsackWeight, items):
 
     return [maxValue, team]
 
-
 async def main():
     async with aiohttp.ClientSession() as session:
         fpl = FPL(session)
 
+        fdr = await fpl.FDR()
+
+        async def FdrEval(player):
+
+            def positionName(posId):
+                if posId == 1:
+                    return 'goalkeeper'
+                elif posId == 2:
+                    return 'defender'
+                elif posId == 3:
+                    return 'midfielder'
+                else:
+                    return 'forward'
+
+            team = await fpl.get_team(player.team)
+            remainingGWs = await team.get_fixtures()
+
+
+            playerEvaluation = 0
+
+            for game in remainingGWs:
+                teamFacingId, HomeAwayId = (game['team_h'], 'A') if game['team_h'] != player.team else (
+                game['team_a'], 'H')
+                teamFacing = await fpl.get_team(teamFacingId)
+
+                playerEvaluation += fdr[teamFacing.name][positionName(player.element_type)][HomeAwayId]
+
+            return playerEvaluation
+
         players = await fpl.get_players()
         # Filtering out the players that are unavailable or injured
-        playersSorted = sorted(filter(lambda player: player.status != 'i' and player.status != 'u', players),
-                               key=lambda x: x.total_points, reverse=True)
 
-        # filteredParameters = [0, 25, 40, 40, 40]
-        # filteredPlayers = []
-        # for x in playersSorted:
-        #     if filteredParameters == [0, 0, 0, 0, 0]:
-        #         break
-        #     if filteredParameters[x.element_type] > 0:
-        #         filteredPlayers.append(x)
-        #         filteredParameters[x.element_type] -= 1
+        # mylist_annotated = [(await FdrEval(x), x) for x in players]
+        # sortP = sorted(mylist_annotated, key=lambda tup: tup[0])
+        # mylist = [x for key, x in sortP]
 
-        knapsackWeight = 100.0
-        [value, team] = bnb(knapsackWeight, playersSorted)
+        # playersSorted = sorted(filter(lambda player: player.status != 'i' and player.status != 'u', players),
+        #                        key=lambda x: (await FdrEval(x)) , reverse=False)
 
-        print("Team value:", value)
-        price = sum([x.now_cost / 10 for x in team])
-        team = sorted(team, key=lambda x: x.element_type)
 
-        [print(x, x.status, x.total_points, x.now_cost / 10) for x in team]
-        print("Team price:", price)
+        [print(await FdrEval(x)) for x in players]
+
+        # ToDo: CHECK: key=lambda x: x.total_points/x.now_cost/10)
+
+        # ToDo : Create a new player evaluation function:
+            # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfer in?
+        # ToDo : Create formation and number of playing subs choices
+
+        # BNB call
+        # knapsackWeight = 100.0
+        # [value, team] = bnb(knapsackWeight, playersSorted)
+        #
+        # # Printing team and values
+        # price = sum([x.now_cost / 10 for x in team])
+        # team = sorted(team, key=lambda x: x.element_type)
+        #
+        # [print(x, x.status, FdrEval(x), x.now_cost / 10) for x in team]
+        # print("\nTeam price:", price)
+        # print("Team value:", value)
+
+
 
 
 if __name__ == "__main__":
+
     asyncio.run(main())
+
