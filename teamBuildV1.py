@@ -1,13 +1,14 @@
 import queue
 import copy
+import sys
 
 import asyncio
+
 import aiohttp
 from fpl import FPL
 
 
 # Evaluation functions:
-
 
 
 #                               ------- BRANCH AND BOUND -------
@@ -54,7 +55,7 @@ def bound(u, knapsackWeight, items):
             continue
         elif totalWeight + items[l].now_cost / 10 <= knapsackWeight:
             totalWeight += items[l].now_cost / 10
-            totalValue += FdrEval(items[l])
+            totalValue += items[u.level + 1].evaluation
             decrementList(tempList, items[l].element_type)
             l += 1
         else:
@@ -84,7 +85,7 @@ def bnb(knapsackWeight, items):
         if vPotentialState[items[u.level + 1].element_type] >= 0:
             # Left node - Player inserted
             v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost / 10,
-                     u.value + FdrEval(items[u.level + 1]), u, 1, items[u.level + 1].element_type,
+                     u.value + items[u.level + 1].evaluation, u, 1, items[u.level + 1].element_type,
                      vPotentialState)
 
             if v.weight <= knapsackWeight and v.value > maxValue:
@@ -111,74 +112,78 @@ def bnb(knapsackWeight, items):
 
     return [maxValue, team]
 
+
+def positionName(posId):
+    if posId == 1:
+        return 'goalkeeper'
+    elif posId == 2:
+        return 'defender'
+    elif posId == 3:
+        return 'midfielder'
+    else:
+        return 'forward'
+
+
+def playersEvaluation(players, teams, fixtures, fdr):
+    fixturesByTeam = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+    for fix in fixtures:
+        fixturesByTeam[fix.team_h - 1].append(fix)
+        fixturesByTeam[fix.team_a - 1].append(fix)
+
+    for player in players:
+        playerEvaluation = 0
+        team = player.team - 1
+        for game in fixturesByTeam[team]:
+            teamFacingId, HomeAwayId = (game.team_h, 'A') if game.team_h != player.team else (game.team_a, 'H')
+            teamFacing = teams[teamFacingId - 1]
+            playerEvaluation += fdr[teamFacing.name][positionName(player.element_type)][HomeAwayId]
+        player.evaluation = playerEvaluation
+
+
 async def main():
     async with aiohttp.ClientSession() as session:
         fpl = FPL(session)
 
-        fdr = await fpl.FDR()
+        # If we send too many requests to the server, it will respond with `error: 429 Too Many Requests`
+        while True:
+            try:
+                fdr = await fpl.FDR()
+                break
+            except aiohttp.ClientResponseError:
+                print("Waiting for server to respond...", file=sys.stderr)
+                await asyncio.sleep(1)
 
-        async def FdrEval(player):
-
-            def positionName(posId):
-                if posId == 1:
-                    return 'goalkeeper'
-                elif posId == 2:
-                    return 'defender'
-                elif posId == 3:
-                    return 'midfielder'
-                else:
-                    return 'forward'
-
-            team = await fpl.get_team(player.team)
-            remainingGWs = await team.get_fixtures()
-
-
-            playerEvaluation = 0
-
-            for game in remainingGWs:
-                teamFacingId, HomeAwayId = (game['team_h'], 'A') if game['team_h'] != player.team else (
-                game['team_a'], 'H')
-                teamFacing = await fpl.get_team(teamFacingId)
-
-                playerEvaluation += fdr[teamFacing.name][positionName(player.element_type)][HomeAwayId]
-
-            return playerEvaluation
-
+        print("Calc", )
+        teams = await fpl.get_teams()
+        fixtures = list(filter(lambda fix: fix.finished is False, await fpl.get_fixtures()))
         players = await fpl.get_players()
         # Filtering out the players that are unavailable or injured
+        players = list(filter(lambda player: player.status != 'i' and player.status != 'u', players))
 
-        # mylist_annotated = [(await FdrEval(x), x) for x in players]
-        # sortP = sorted(mylist_annotated, key=lambda tup: tup[0])
-        # mylist = [x for key, x in sortP]
+        # FDR
+        playersEvaluation(players, teams, fixtures, fdr)
 
-        # playersSorted = sorted(filter(lambda player: player.status != 'i' and player.status != 'u', players),
-        #                        key=lambda x: (await FdrEval(x)) , reverse=False)
+        playersSorted = sorted(players, key=lambda player: player.total_points/(player.now_cost/10), reverse=True)
+        # [print(player, player.evaluation) for player in playersSorted]
 
-
-        [print(await FdrEval(x)) for x in players]
-
-        # ToDo: CHECK: key=lambda x: x.total_points/x.now_cost/10)
-
+        # ToDo: CHECK: key=lambda x: x.total_points/(x.now_cost/10))
         # ToDo : Create a new player evaluation function:
-            # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfer in?
+        # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfer in?
         # ToDo : Create formation and number of playing subs choices
 
         # BNB call
-        # knapsackWeight = 100.0
-        # [value, team] = bnb(knapsackWeight, playersSorted)
-        #
-        # # Printing team and values
-        # price = sum([x.now_cost / 10 for x in team])
-        # team = sorted(team, key=lambda x: x.element_type)
-        #
-        # [print(x, x.status, FdrEval(x), x.now_cost / 10) for x in team]
-        # print("\nTeam price:", price)
-        # print("Team value:", value)
+        knapsackWeight = 100.0
+        [value, team] = bnb(knapsackWeight, playersSorted)
 
+        # Printing team and values
+        price = sum([x.now_cost / 10 for x in team])
+        team = sorted(team, key=lambda x: x.element_type)
 
+        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        print("\nTeam price:", price)
+        print("Team value:", value)
 
 
 if __name__ == "__main__":
-
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(main())
-
