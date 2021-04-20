@@ -1,6 +1,7 @@
 import queue
 import copy
 import sys
+import time
 
 import asyncio
 
@@ -137,7 +138,29 @@ def playersEvaluation(players, teams, fixtures, fdr):
             teamFacingId, HomeAwayId = (game.team_h, 'A') if game.team_h != player.team else (game.team_a, 'H')
             teamFacing = teams[teamFacingId - 1]
             playerEvaluation += fdr[teamFacing.name][positionName(player.element_type)][HomeAwayId]
-        player.evaluation = playerEvaluation
+        player.evaluation = playerEvaluation / len(fixturesByTeam[team])
+
+
+def normalization(players):
+    evMin = float('inf')
+    evMax = float('-inf')
+    tpMin = float('inf')
+    tpMax = float('-inf')
+    formMin = float('inf')
+    formMax = float('-inf')
+
+    for player in players:
+        evMin = evMin if evMin < player.evaluation else player.evaluation
+        evMax = evMax if evMax > player.evaluation else player.evaluation
+        tpMin = tpMin if tpMin < player.total_points else player.total_points
+        tpMax = tpMax if tpMax > player.total_points else player.total_points
+        formMin = formMin if formMin < float(player.form) else float(player.form)
+        formMax = formMax if formMax > float(player.form) else float(player.form)
+
+    for player in players:
+        player.evaluation = (player.evaluation - evMin) / (evMax - evMin)
+        player.total_points = (player.total_points - tpMin) / (tpMax - tpMin)
+        player.form = (float(player.form) - formMin) / (formMax - formMin)
 
 
 async def main():
@@ -151,9 +174,10 @@ async def main():
                 break
             except aiohttp.ClientResponseError:
                 print("Waiting for server to respond...", file=sys.stderr)
-                await asyncio.sleep(1)
+                await asyncio.sleep(3)
 
         print("Calc", )
+        sTimeStart = time.time()
         teams = await fpl.get_teams()
         fixtures = list(filter(lambda fix: fix.finished is False, await fpl.get_fixtures()))
         players = await fpl.get_players()
@@ -163,8 +187,10 @@ async def main():
         # FDR
         playersEvaluation(players, teams, fixtures, fdr)
 
-        playersSorted = sorted(players, key=lambda player: player.total_points/(player.now_cost/10), reverse=True)
-        # [print(player, player.evaluation) for player in playersSorted]
+        playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
+        normalization(playersSorted)
+        [print(player, "| Evaluation: " + str(player.evaluation), "TP: " + str(player.total_points),
+               "Form: " + str(player.form)) for player in playersSorted]
 
         # ToDo: CHECK: key=lambda x: x.total_points/(x.now_cost/10))
         # ToDo : Create a new player evaluation function:
@@ -172,16 +198,18 @@ async def main():
         # ToDo : Create formation and number of playing subs choices
 
         # BNB call
-        knapsackWeight = 100.0
-        [value, team] = bnb(knapsackWeight, playersSorted)
-
-        # Printing team and values
-        price = sum([x.now_cost / 10 for x in team])
-        team = sorted(team, key=lambda x: x.element_type)
-
-        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
-        print("\nTeam price:", price)
-        print("Team value:", value)
+        # knapsackWeight = 100.0
+        # [value, team] = bnb(knapsackWeight, playersSorted)
+        # sTimeEnd = time.time()
+        # print(sTimeEnd - sTimeStart, "s")
+        #
+        # # Printing team and values
+        # price = sum([x.now_cost / 10 for x in team])
+        # team = sorted(team, key=lambda x: x.element_type)
+        #
+        # [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        # print("\nTeam price:", price)
+        # print("Team value:", value)
 
 
 if __name__ == "__main__":
