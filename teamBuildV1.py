@@ -14,7 +14,7 @@ from fpl import FPL
 
 class Node:
 
-    def __init__(self, level, weight, value, parent, inserted, position, positionState):
+    def __init__(self, level, weight, value, parent, inserted, position, positionState, teamsState):
         self.level = level
         self.weight = weight
         self.value = value
@@ -23,7 +23,7 @@ class Node:
         self.parent = parent
         self.position = position
         self.positionState = positionState
-
+        self.teamsState = teamsState
 
 def decrementList(l, index):
     l[index] -= 1
@@ -45,17 +45,19 @@ def bound(u, knapsackWeight, items):
     l = u.level + 1
     totalWeight = u.weight
 
-    tempList = copy.deepcopy(u.positionState)
+    tempList1 = copy.deepcopy(u.positionState)
+    tempList2 = copy.deepcopy(u.teamsState)
 
-    while l < len(items) and tempList != [0, 0, 0, 0, 0]:
+    while l < len(items) and tempList1 != [0, 0, 0, 0, 0]:
 
-        if tempList[items[l].element_type] <= 0:
+        if tempList1[items[l].element_type] <= 0 or tempList2[items[l].team] <= 0 :
             l += 1
             continue
         elif totalWeight + items[l].now_cost / 10 <= knapsackWeight:
+
             totalWeight += items[l].now_cost / 10
             totalValue += items[u.level + 1].evaluation
-            decrementList(tempList, items[l].element_type)
+            decrementList(tempList1, items[l].element_type)
             l += 1
         else:
             break
@@ -66,7 +68,7 @@ def bound(u, knapsackWeight, items):
 def bnb(knapsackWeight, items):
     Q = queue.Queue()
 
-    u = Node(-1, 0, 0, None, 0, None, [0, 2, 5, 5, 3])
+    u = Node(-1, 0, 0, None, 0, None, [0, 2, 5, 5, 3], [3 for x in range(21)])
     Q.put(u)
     maxValue = 0
     finalNode = None
@@ -80,12 +82,15 @@ def bnb(knapsackWeight, items):
         uCopyPositionState = copy.deepcopy(u.positionState)
         vPotentialState = decrementList(uCopyPositionState, items[u.level + 1].element_type)
 
+        uCopyTeamsState = copy.deepcopy(u.teamsState)
+        vPotentialTeamsState = decrementList(uCopyTeamsState, items[u.level + 1].team)
+
         # If there is space for the new players position
-        if vPotentialState[items[u.level + 1].element_type] >= 0:
+        if vPotentialState[items[u.level + 1].element_type] >= 0 and vPotentialTeamsState[items[u.level + 1].team] >= 0:
             # Left node - Player inserted
             v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost / 10,
                      u.value + items[u.level + 1].evaluation, u, 1, items[u.level + 1].element_type,
-                     vPotentialState)
+                     vPotentialState,vPotentialTeamsState)
 
             if v.weight <= knapsackWeight and v.value > maxValue:
                 maxValue = v.value
@@ -98,7 +103,7 @@ def bnb(knapsackWeight, items):
         # If the team is full, there is no need for a deeper search
         if u.positionState != [0, 0, 0, 0, 0]:
             # Right node - Player not inserted
-            v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type, u.positionState)
+            v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type, u.positionState,u.teamsState)
             v.bound = bound(v, knapsackWeight, items)
             if v.bound > maxValue:
                 Q.put(v)
