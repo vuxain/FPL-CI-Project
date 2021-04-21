@@ -9,8 +9,6 @@ import aiohttp
 from fpl import FPL
 
 
-# Evaluation functions:
-
 
 #                               ------- BRANCH AND BOUND -------
 
@@ -125,7 +123,7 @@ def positionName(posId):
         return 'forward'
 
 
-def playersEvaluation(players, teams, fixtures, fdr):
+def fixtureAnalyzer(players, teams, fixtures, fdr):
     fixturesByTeam = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
     for fix in fixtures:
         fixturesByTeam[fix.team_h - 1].append(fix)
@@ -133,12 +131,16 @@ def playersEvaluation(players, teams, fixtures, fdr):
 
     for player in players:
         playerEvaluation = 0
+        FDRSum = 0
         team = player.team - 1
         for game in fixturesByTeam[team]:
             teamFacingId, HomeAwayId = (game.team_h, 'A') if game.team_h != player.team else (game.team_a, 'H')
             teamFacing = teams[teamFacingId - 1]
             playerEvaluation += fdr[teamFacing.name][positionName(player.element_type)][HomeAwayId]
-        player.evaluation = playerEvaluation / len(fixturesByTeam[team])
+            FDRSum += teamFacing.strength
+        player.average_points_conceded = playerEvaluation / len(fixturesByTeam[team])
+        player.fdr = FDRSum / len(fixturesByTeam[team])
+
 
 
 def normalization(players):
@@ -150,17 +152,24 @@ def normalization(players):
     formMax = float('-inf')
 
     for player in players:
-        evMin = evMin if evMin < player.evaluation else player.evaluation
-        evMax = evMax if evMax > player.evaluation else player.evaluation
+        evMin = evMin if evMin < player.average_points_conceded else player.average_points_conceded
+        evMax = evMax if evMax > player.average_points_conceded else player.average_points_conceded
         tpMin = tpMin if tpMin < player.total_points else player.total_points
         tpMax = tpMax if tpMax > player.total_points else player.total_points
         formMin = formMin if formMin < float(player.form) else float(player.form)
         formMax = formMax if formMax > float(player.form) else float(player.form)
 
     for player in players:
-        player.evaluation = (player.evaluation - evMin) / (evMax - evMin)
+        player.average_points_conceded = 1 - ((player.average_points_conceded - evMin) / (evMax - evMin))
         player.total_points = (player.total_points - tpMin) / (tpMax - tpMin)
         player.form = (float(player.form) - formMin) / (formMax - formMin)
+
+def evaluation(players):
+
+    for player in players:
+
+        player.evaluation = 0.4*player.total_points +  0.35*player.average_points_conceded + 0.25*player.form
+
 
 
 async def main():
@@ -185,12 +194,13 @@ async def main():
         players = list(filter(lambda player: player.status != 'i' and player.status != 'u', players))
 
         # FDR
-        playersEvaluation(players, teams, fixtures, fdr)
-
+        fixtureAnalyzer(players, teams, fixtures, fdr)
+        normalization(players)
+        evaluation(players)
         playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
-        normalization(playersSorted)
-        [print(player, "| Evaluation: " + str(player.evaluation), "TP: " + str(player.total_points),
-               "Form: " + str(player.form)) for player in playersSorted]
+
+        # [print(player, "Player value: " + str(player.evaluation)  , "| Average Points Conceded: " + str(player.average_points_conceded), "TP: " + str(player.total_points),
+        #        "Form: " + str(player.form), "FDR: " + str(player.fdr)) for player in playersSorted]
 
         # ToDo: CHECK: key=lambda x: x.total_points/(x.now_cost/10))
         # ToDo : Create a new player evaluation function:
@@ -198,18 +208,18 @@ async def main():
         # ToDo : Create formation and number of playing subs choices
 
         # BNB call
-        # knapsackWeight = 100.0
-        # [value, team] = bnb(knapsackWeight, playersSorted)
-        # sTimeEnd = time.time()
-        # print(sTimeEnd - sTimeStart, "s")
-        #
-        # # Printing team and values
-        # price = sum([x.now_cost / 10 for x in team])
-        # team = sorted(team, key=lambda x: x.element_type)
-        #
-        # [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
-        # print("\nTeam price:", price)
-        # print("Team value:", value)
+        knapsackWeight = 100.0
+        [value, team] = bnb(knapsackWeight, playersSorted)
+        sTimeEnd = time.time()
+        print(sTimeEnd - sTimeStart, "s")
+
+        # Printing team and values
+        price = sum([x.now_cost / 10 for x in team])
+        team = sorted(team, key=lambda x: x.evaluation)
+
+        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        print("\nTeam price:", price)
+        print("Team value:", value)
 
 
 if __name__ == "__main__":
