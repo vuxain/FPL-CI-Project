@@ -1,4 +1,5 @@
 import queue
+from collections import deque
 import copy
 import sys
 import time
@@ -27,7 +28,6 @@ class Node:
 
 def decrementList(l, index):
     l[index] -= 1
-
     return l
 
 
@@ -56,25 +56,28 @@ def bound(u, knapsackWeight, items):
         elif totalWeight + items[l].now_cost / 10 <= knapsackWeight:
 
             totalWeight += items[l].now_cost / 10
-            totalValue += items[u.level + 1].evaluation
+            totalValue += items[l].evaluation
             decrementList(tempList1, items[l].element_type)
+            decrementList(tempList2, items[l].team)
             l += 1
         else:
+
             break
 
     return totalValue
 
 
 def bnb(knapsackWeight, items):
-    Q = queue.Queue()
+
+    Q = deque()
 
     u = Node(-1, 0, 0, None, 0, None, [0, 2, 5, 5, 3], [3 for x in range(21)])
-    Q.put(u)
+    Q.append(u)
     maxValue = 0
     finalNode = None
 
-    while not Q.empty():
-        u = Q.get()
+    while Q:
+        u = Q.pop()
 
         if u.level == len(items) - 1:
             continue
@@ -92,13 +95,13 @@ def bnb(knapsackWeight, items):
                      u.value + items[u.level + 1].evaluation, u, 1, items[u.level + 1].element_type,
                      vPotentialState,vPotentialTeamsState)
 
-            if v.weight <= knapsackWeight and v.value > maxValue:
+            if v.weight <= knapsackWeight and v.value > maxValue and v.positionState == [0,0,0,0,0]:
                 maxValue = v.value
                 finalNode = v
 
             v.bound = bound(v, knapsackWeight, items)
             if v.bound > maxValue:
-                Q.put(v)
+                Q.append(v)
 
         # If the team is full, there is no need for a deeper search
         if u.positionState != [0, 0, 0, 0, 0]:
@@ -106,7 +109,7 @@ def bnb(knapsackWeight, items):
             v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type, u.positionState,u.teamsState)
             v.bound = bound(v, knapsackWeight, items)
             if v.bound > maxValue:
-                Q.put(v)
+                Q.append(v)
 
     team = []
     while finalNode is not None:
@@ -174,10 +177,12 @@ def evaluation(players):
     for player in players:
 
         player.evaluation = 0.4*player.total_points +  0.35*player.average_points_conceded + 0.25*player.form
+        player.evaluation = round(player.evaluation,4)
 
 
 
 async def main():
+
     async with aiohttp.ClientSession() as session:
         fpl = FPL(session)
 
@@ -190,11 +195,14 @@ async def main():
                 print("Waiting for server to respond...", file=sys.stderr)
                 await asyncio.sleep(3)
 
-        print("Calc", )
+        print("Process started", )
+
         sTimeStart = time.time()
+
         teams = await fpl.get_teams()
         fixtures = list(filter(lambda fix: fix.finished is False, await fpl.get_fixtures()))
         players = await fpl.get_players()
+
         # Filtering out the players that are unavailable or injured
         players = list(filter(lambda player: player.status != 'i' and player.status != 'u', players))
 
@@ -204,27 +212,44 @@ async def main():
         evaluation(players)
         playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
 
+        # Filtering out a certain amount of players for bnb testing
+        filteredParameters = [0, 10, 10, 10, 10]
+        filteredPlayers = []
+        for x in playersSorted:
+            if filteredParameters == [0, 0, 0, 0, 0]:
+                break
+            if filteredParameters[x.element_type] > 0:
+                filteredPlayers.append(x)
+                filteredParameters[x.element_type] -= 1
+
+        filteredPlayers = sorted(players, key=lambda player: player.evaluation, reverse=True)
+
+
+        # Printing players valuations
+        #
         # [print(player, "Player value: " + str(player.evaluation)  , "| Average Points Conceded: " + str(player.average_points_conceded), "TP: " + str(player.total_points),
-        #        "Form: " + str(player.form), "FDR: " + str(player.fdr)) for player in playersSorted]
+        #        "Form: " + str(player.form), "FDR: " + str(player.fdr)) for player in filteredPlayers]
 
         # ToDo: CHECK: key=lambda x: x.total_points/(x.now_cost/10))
         # ToDo : Create a new player evaluation function:
-        # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfer in?
+        # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfers in?
         # ToDo : Create formation and number of playing subs choices
 
         # BNB call
-        knapsackWeight = 100.0
-        [value, team] = bnb(knapsackWeight, playersSorted)
-        sTimeEnd = time.time()
-        print(sTimeEnd - sTimeStart, "s")
 
-        # Printing team and values
-        price = sum([x.now_cost / 10 for x in team])
-        team = sorted(team, key=lambda x: x.evaluation)
 
-        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
-        print("\nTeam price:", price)
-        print("Team value:", value)
+        # knapsackWeight = 100.0
+        # [value, team] = bnb(knapsackWeight, filteredPlayers)
+        # sTimeEnd = time.time()
+        # print(sTimeEnd - sTimeStart, "s")
+        #
+        # # Printing team and values
+        # price = sum([x.now_cost / 10 for x in team])
+        # team = sorted(team, key=lambda x: x.element_type)
+        #
+        # [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        # print("\nTeam price:", price)
+        # print("Team value:", value)
 
 
 if __name__ == "__main__":
