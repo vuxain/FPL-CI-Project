@@ -34,8 +34,8 @@ def decrementList(l, index):
 def positionStateCheck(array):
     for x in array:
         if x < 0:
-            return 0
-    return 1
+            return False
+    return True
 
 
 def bound(u, knapsackWeight, items):
@@ -50,27 +50,24 @@ def bound(u, knapsackWeight, items):
 
     while l < len(items) and tempList1 != [0, 0, 0, 0, 0]:
 
-        if tempList1[items[l].element_type] <= 0 or tempList2[items[l].team] <= 0 :
-            l += 1
-            continue
-        elif totalWeight + items[l].now_cost / 10 <= knapsackWeight:
+        # if tempList1[items[l].element_type] <= 0 or tempList2[items[l].team] <= 0 :
+        #     l += 1
+        if totalWeight + items[l].now_cost / 10 <= knapsackWeight and  tempList1[items[l].element_type] >0 and tempList2[items[l].team] > 0 :
 
             totalWeight += items[l].now_cost / 10
             totalValue += items[l].evaluation
             decrementList(tempList1, items[l].element_type)
             decrementList(tempList2, items[l].team)
-            l += 1
-        else:
 
-            break
+        l += 1
 
     return totalValue
 
 
 def bnb(knapsackWeight, items):
 
-    Q = deque()
 
+    Q = []
     u = Node(-1, 0, 0, None, 0, None, [0, 2, 5, 5, 3], [3 for x in range(21)])
     Q.append(u)
     maxValue = 0
@@ -83,6 +80,8 @@ def bnb(knapsackWeight, items):
             continue
 
         uCopyPositionState = copy.deepcopy(u.positionState)
+        uCopyPosition = copy.deepcopy(u.positionState)
+        uCopyTeam =  copy.deepcopy(u.teamsState)
         vPotentialState = decrementList(uCopyPositionState, items[u.level + 1].element_type)
 
         uCopyTeamsState = copy.deepcopy(u.teamsState)
@@ -95,7 +94,7 @@ def bnb(knapsackWeight, items):
                      u.value + items[u.level + 1].evaluation, u, 1, items[u.level + 1].element_type,
                      vPotentialState,vPotentialTeamsState)
 
-            if v.weight <= knapsackWeight and v.value > maxValue and v.positionState == [0,0,0,0,0]:
+            if v.weight <= knapsackWeight and v.value > maxValue and v.positionState == [0,0,0,0,0] and positionStateCheck(v.teamsState):
                 maxValue = v.value
                 finalNode = v
 
@@ -106,7 +105,7 @@ def bnb(knapsackWeight, items):
         # If the team is full, there is no need for a deeper search
         if u.positionState != [0, 0, 0, 0, 0]:
             # Right node - Player not inserted
-            v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type, u.positionState,u.teamsState)
+            v = Node(u.level + 1, u.weight, u.value, u, 0, items[u.level + 1].element_type,uCopyPosition,uCopyTeam)
             v.bound = bound(v, knapsackWeight, items)
             if v.bound > maxValue:
                 Q.append(v)
@@ -176,8 +175,8 @@ def evaluation(players):
 
     for player in players:
 
-        player.evaluation = 0.4*player.total_points +  0.35*player.average_points_conceded + 0.25*player.form
-        player.evaluation = round(player.evaluation,4)
+        player.evaluation = 0.4*player.total_points +  0.4*player.average_points_conceded + 0.2*player.form
+        player.evaluation = round(player.evaluation,2)
 
 
 
@@ -213,16 +212,19 @@ async def main():
         playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
 
         # Filtering out a certain amount of players for bnb testing
-        filteredParameters = [0, 10, 10, 10, 10]
+        filteredParameters1 = [0, 5, 10, 10, 10]
+        filteredParameters2 = [3 for x in range(21)]
         filteredPlayers = []
         for x in playersSorted:
-            if filteredParameters == [0, 0, 0, 0, 0]:
+            if filteredParameters1 == [0, 0, 0, 0, 0]:
                 break
-            if filteredParameters[x.element_type] > 0:
+            if filteredParameters1[x.element_type] > 0 and filteredParameters2[x.team]>0 :
                 filteredPlayers.append(x)
-                filteredParameters[x.element_type] -= 1
+                filteredParameters1[x.element_type] -= 1
+                filteredParameters2[x.team] -= 1
 
-        filteredPlayers = sorted(players, key=lambda player: player.evaluation, reverse=True)
+
+        filteredPlayers = sorted(filteredPlayers, key=lambda player: player.evaluation, reverse=True)
 
 
         # Printing players valuations
@@ -238,18 +240,18 @@ async def main():
         # BNB call
 
 
-        # knapsackWeight = 100.0
-        # [value, team] = bnb(knapsackWeight, filteredPlayers)
-        # sTimeEnd = time.time()
-        # print(sTimeEnd - sTimeStart, "s")
-        #
-        # # Printing team and values
-        # price = sum([x.now_cost / 10 for x in team])
-        # team = sorted(team, key=lambda x: x.element_type)
-        #
-        # [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
-        # print("\nTeam price:", price)
-        # print("Team value:", value)
+        knapsackWeight = 100.0
+        [value, team] = bnb(knapsackWeight, filteredPlayers)
+        sTimeEnd = time.time()
+        print(sTimeEnd - sTimeStart, "s")
+
+        # Printing team and values
+        price = sum([x.now_cost / 10 for x in team])
+        team = sorted(team, key=lambda x: x.element_type)
+
+        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        print("\nTeam price:", price)
+        print("Team value:", value)
 
 
 if __name__ == "__main__":
