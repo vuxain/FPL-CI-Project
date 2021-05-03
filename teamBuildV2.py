@@ -149,7 +149,7 @@ def positionName(posId):
 
 
 def fixtureAnalyzer(players, teams, fixtures, fdr):
-    fixturesByTeam = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
+    fixturesByTeam = [[] for _ in range(len(teams))]
     for fix in fixtures:
         fixturesByTeam[fix.team_h - 1].append(fix)
         fixturesByTeam[fix.team_a - 1].append(fix)
@@ -251,7 +251,7 @@ async def main():
         population.append(Individual(gks, dfs, mfs, fws))
         newPopulation.append(Individual(gks, dfs, mfs, fws))
 
-    for iteration in range(500):
+    for iteration in range(1000):
         population = sorted(population, key=lambda individual: individual.fitness, reverse=True)
         for i in range(19):
             newPopulation[i] = population[i]
