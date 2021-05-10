@@ -1,5 +1,5 @@
-import queue
-from collections import deque
+import pulp
+import numpy as np
 import copy
 import sys
 import time
@@ -175,8 +175,48 @@ def evaluation(players):
 
     for player in players:
 
-        player.evaluation = 0.4*player.total_points +  0.4*player.average_points_conceded + 0.2*player.form
+        player.evaluation = 0.6*player.total_points +  0.3*player.average_points_conceded + 0.1*player.form
         player.evaluation = round(player.evaluation,2)
+
+
+#                               ------- LINEAR PROGRAMMING -------
+
+def linearMethod(players):
+
+    nPlayers = len(players)
+
+    model = pulp.LpProblem("Team value maximisation", pulp.LpMaximize)
+
+    selectedPlayers = [
+        pulp.LpVariable("x{}".format(i), lowBound=0, upBound=1, cat='Integer')
+        for i in range(nPlayers)
+    ]
+    selectedTeams = [i+1 for i in range(20)]
+
+    model += sum(selectedPlayers[i] * players[i].evaluation
+                 for i in range(nPlayers)), "Objective"
+
+    model += sum(selectedPlayers[i] * players[i].now_cost/10 for i in range(nPlayers)) <= 100.0
+    model += sum(selectedPlayers) == 15
+
+    model += sum(selectedPlayers[i] for i in range(nPlayers) if players[i].element_type == 1) == 2
+    model += sum(selectedPlayers[i] for i in range(nPlayers) if players[i].element_type == 2) == 5
+    model += sum(selectedPlayers[i] for i in range(nPlayers) if players[i].element_type == 3) == 5
+    model += sum(selectedPlayers[i] for i in range(nPlayers) if players[i].element_type == 4) == 3
+
+    for club_id in selectedTeams:
+        model += sum(selectedPlayers[i] for i in range(nPlayers) if players[i].team == club_id) <= 3
+
+    model.solve()
+
+    finalTeam = []
+
+    for i in range(len(selectedPlayers)):
+        if selectedPlayers[i].value() == 1:
+            finalTeam.append(players[i])
+
+    return finalTeam
+
 
 
 
@@ -224,7 +264,8 @@ async def main():
                 filteredParameters2[x.team] -= 1
 
 
-        filteredPlayers = sorted(filteredPlayers, key=lambda player: player.evaluation, reverse=True)
+        filteredPlayers = sorted(filteredPlayers, key=lambda player: (player.evaluation), reverse=True)
+
 
 
         # Printing players valuations
@@ -232,26 +273,36 @@ async def main():
         # [print(player, "Player value: " + str(player.evaluation)  , "| Average Points Conceded: " + str(player.average_points_conceded), "TP: " + str(player.total_points),
         #        "Form: " + str(player.form), "FDR: " + str(player.fdr)) for player in filteredPlayers]
 
+
+
+        # BNB call
+
+        # knapsackWeight = 100.0
+        # [value, team] = bnb(knapsackWeight, filteredPlayers)
+        # sTimeEnd = time.time()
+        # print(sTimeEnd - sTimeStart, "s")
+        
+
+        # LP call
+
+        team = linearMethod(players)
+        price = sum([x.now_cost / 10 for x in team])
+        value = sum([x.evaluation for x in team])
+
+
+
+        # Printing team and values
+
+        team = sorted(team, key=lambda x: x.element_type)
+        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        print("\nTeam price:", price)
+        print("Team value:", value)
+
+
         # ToDo: CHECK: key=lambda x: x.total_points/(x.now_cost/10))
         # ToDo : Create a new player evaluation function:
         # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfers in?
         # ToDo : Create formation and number of playing subs choices
-
-        # BNB call
-
-
-        knapsackWeight = 100.0
-        [value, team] = bnb(knapsackWeight, filteredPlayers)
-        sTimeEnd = time.time()
-        print(sTimeEnd - sTimeStart, "s")
-
-        # Printing team and values
-        price = sum([x.now_cost / 10 for x in team])
-        team = sorted(team, key=lambda x: x.element_type)
-
-        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
-        print("\nTeam price:", price)
-        print("Team value:", value)
 
 
 if __name__ == "__main__":
