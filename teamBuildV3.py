@@ -8,21 +8,14 @@ import aiohttp
 import asyncio
 from fpl import FPL
 
-# --------------------- GA Constants -----------------------
-POPULATION_SIZE = 1345
-NUMBER_OF_ITERATIONS = 3000
-ELITISM_SIZE = 322
-TOURNAMENT_SIZE = 5
-MUTATION_RATE = 0.03
+NUMBER_OF_ITERATIONS = 10000
 
 
-# --------------------- GA Individual ---------------------
-
-class Individual:
+class Solution:
     def __init__(self, gks, dfs, mfs, fws):
         # [gk, gk, df, df, df, df, df, mf, mf, mf, mf, mf, fw, fw, fw]
-        self.code = []
-        self.fitness = 0
+        self.solution = []
+        self.value = 0
 
         self.players = [[], gks.copy(), dfs.copy(), mfs.copy(), fws.copy()]
         self.number_of_players = [0, len(gks), len(dfs), len(mfs), len(fws)]
@@ -35,28 +28,28 @@ class Individual:
                 index = random.randint(0, self.number_of_players[i] - 1)
                 if self.same_team[self.players[i][index].team] == 0:
                     continue
-                self.code.append(self.players[i][index])
+                self.solution.append(self.players[i][index])
                 self.positions[i] -= 1
                 self.same_team[self.players[i][index].team] -= 1
                 working_position -= 1
             i += 1
 
         self.correct_non_feasible()
-        self.fitness_function()
+        self.value_function()
 
-    def fitness_function(self):
+    def value_function(self):
         fit = 0.0
-        for i in self.code:
+        for i in self.solution:
             fit += i.evaluation
 
-        self.fitness = fit
+        self.value = fit
 
     def __lt__(self, other):
-        return self.fitness > other.fitness
+        return self.value > other.value
 
     def update_teams(self):
         self.same_team = [3 for _ in range(21)]
-        for player in self.code:
+        for player in self.solution:
             self.same_team[player.team] -= 1
 
     def return_random_player_by_position(self, position):
@@ -72,10 +65,10 @@ class Individual:
             return False
 
         self.same_team[kick_player.team] += 1
-        self.code.remove(kick_player)
-        self.code.append(new_player)
+        self.solution.remove(kick_player)
+        self.solution.append(new_player)
         self.same_team[new_player.team] -= 1
-        self.code = sorted(self.code, key=lambda x: x.element_type)
+        self.solution = sorted(self.solution, key=lambda x: x.element_type)
 
         return True
 
@@ -84,14 +77,14 @@ class Individual:
 
         all_conditions = [False, False, False]
         while any(x is False for x in all_conditions):
-            result = [i for key in (key for key, count in Counter(self.code).items() if count > 1) for i, x in
-                      enumerate(self.code) if x == key]
+            result = [i for key in (key for key, count in Counter(self.solution).items() if count > 1) for i, x in
+                      enumerate(self.solution) if x == key]
             # Checks duplicated players
             if len(result) == 0:
                 all_conditions[0] = True
             else:
                 all_conditions[0] = False
-                duplicated_player = self.code[result[0]]
+                duplicated_player = self.solution[result[0]]
                 new_player = self.return_random_player_by_position(duplicated_player.element_type)
                 if not self.remove_player_and_add_new_player(duplicated_player, new_player):
                     continue
@@ -101,7 +94,7 @@ class Individual:
             while any(x < 0 for x in self.same_team):
                 all_conditions[1] = False
                 team_index = next(x for x, val in enumerate(self.same_team) if val < 0)
-                same_team_players = [x for x in self.code if x.team == team_index]
+                same_team_players = [x for x in self.solution if x.team == team_index]
                 worst_value_payer = float('+inf')
                 worst_player_index = -1
                 # FIX: kick player based on the evaluation #newSeason
@@ -115,70 +108,29 @@ class Individual:
 
             all_conditions[2] = True
             # Checks price
-            while sum([x.now_cost / 10 for x in self.code]) > 100.00:
+            while sum([x.now_cost / 10 for x in self.solution]) > 100.00:
                 all_conditions[2] = False
-                index = random.randint(0, len(self.code)-1)
-                kick_player = self.code[index]
+                index = random.randint(0, len(self.solution) - 1)
+                kick_player = self.solution[index]
                 new_player = self.return_random_player_by_position(kick_player.element_type)
                 if not self.remove_player_and_add_new_player(kick_player, new_player):
                     continue
 
+    def invert(self):
+        index = random.randint(0, len(self.solution) - 1)
+        kick_player = self.solution[index]
+        new_player = self.return_random_player_by_position(kick_player.element_type)
+        if not self.remove_player_and_add_new_player(kick_player, new_player):
+            return False
+        self.correct_non_feasible()
+        self.value_function()
+        return True
+
     def print_team(self):
-        [print(x, x.status, x.evaluation, str(x.now_cost / 10) + 'M') for x in self.code]
+        [print(x, x.status, x.evaluation, str(x.now_cost / 10) + 'M') for x in self.solution]
         print()
 
 
-# --------------------- GA Functions -----------------------
-def tournament_selection(population):
-    max_fitness = float('-inf')
-    k = -1
-    population_size = correct_parity()[0]
-    for i in range(TOURNAMENT_SIZE):
-        j = random.randrange(population_size)
-        if population[j].fitness > max_fitness:
-            max_fitness = population[j].fitness
-            k = j
-    return k
-
-
-def crossover(parent1, parent2, child1, child2):
-    parent1.code = sorted(parent1.code, key=lambda x: x.element_type)
-    parent2.code = sorted(parent2.code, key=lambda x: x.element_type)
-    length = len(parent1.code)
-
-    i = random.randrange(length)
-    for j in range(i):
-        child1.code[j] = parent1.code[j]
-        child2.code[j] = parent2.code[j]
-    for j in range(i, length):
-        child1.code[j] = parent2.code[j]
-        child2.code[j] = parent1.code[j]
-    child1.correct_non_feasible()
-    child2.correct_non_feasible()
-
-
-def mutation(individual):
-    length = len(individual.code)
-    for i in range(length):
-        if random.random() > MUTATION_RATE:
-            continue
-
-        while True:
-            kick_player = individual.code[i]
-            new_player = individual.return_random_player_by_position(kick_player.element_type)
-            if kick_player.id == new_player.id:
-                continue
-
-            individual.same_team[kick_player.team] += 1
-            individual.code.remove(kick_player)
-            individual.code.append(new_player)
-            individual.same_team[new_player.team] -= 1
-            individual.code = sorted(individual.code, key=lambda x: x.element_type)
-            break
-    individual.correct_non_feasible()
-
-
-# ---------------------- FPL Prepare ----------------------
 def position_name(pos_id):
     if pos_id == 1:
         return 'goalkeeper'
@@ -261,14 +213,6 @@ def players_by_position(players=None):
     return gks, dfs, mfs, fws
 
 
-def correct_parity():
-    if (POPULATION_SIZE % 2) != (ELITISM_SIZE % 2):
-        return POPULATION_SIZE, ELITISM_SIZE - 1
-    return POPULATION_SIZE, ELITISM_SIZE
-
-# ---------------------------------------------------------
-
-
 async def main():
     async with aiohttp.ClientSession() as session:
         fpl = FPL(session)
@@ -297,37 +241,39 @@ async def main():
 
     normalization(players)
     evaluation(players)
-    players_sorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
-    gks, dfs, mfs, fws = players_by_position(players_sorted)
+    gks, dfs, mfs, fws = players_by_position(players)
 
-    population = []
-    new_population = []
-    population_size, elites = correct_parity()
-    for i in range(population_size):
-        population.append(Individual(gks, dfs, mfs, fws))
-        new_population.append(Individual(gks, dfs, mfs, fws))
+    solution = Solution(gks, dfs, mfs, fws)
 
-    for iteration in range(NUMBER_OF_ITERATIONS):
-        population = sorted(population, key=lambda individual: individual.fitness, reverse=True)
-        for i in range(elites):
-            new_population[i] = copy.copy(population[i])
-        for i in range(elites, population_size, 2):
-            k1 = tournament_selection(population)
-            k2 = tournament_selection(population)
-            crossover(population[k1], population[k2], new_population[i], new_population[i + 1])
+    current_value = solution.value
+    best_value = current_value
+    best_solution = copy.copy(solution)
 
-            mutation(new_population[i])
-            mutation(new_population[i + 1])
+    for i in range(1, NUMBER_OF_ITERATIONS):
+        revert_solution = copy.copy(solution)
+        if not solution.invert():
+            continue
 
-            new_population[i].fitness_function()
-            new_population[i + 1].fitness_function()
-        population = copy.copy(new_population)
+        new_value = solution.value
+        new_solution = copy.copy(solution)
+        if new_value > current_value:
+            current_value = new_value
+            solution = copy.copy(new_solution)
+        else:
+            p = 1.0 / i ** 0.5
+            q = random.uniform(0, 1)
+            if p > q:
+                current_value = new_value
+                solution = copy.copy(new_solution)
+            else:
+                solution = copy.copy(revert_solution)
+        if new_value > best_value:
+            best_value = new_value
+            best_solution = copy.copy(new_solution)
 
-    population = sorted(population, key=lambda individual: individual.fitness, reverse=True)
-
-    population[0].print_team()
-    print('Price:', sum(x.now_cost / 10 for x in population[0].code), "M")
-    print('Value:', population[0].fitness)
+    solution.print_team()
+    print('Price:', sum(x.now_cost / 10 for x in best_solution.solution), "M")
+    print('Value:', best_solution.value)
     s_time_stop = time.time()
     print("Finished in:", (s_time_stop - s_time_start), "s")
 
