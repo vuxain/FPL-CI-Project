@@ -8,41 +8,113 @@ import aiohttp
 import asyncio
 from fpl import FPL
 
-NUMBER_OF_ITERATIONS = 10000
+NUMBER_OF_ITERATIONS = 100000
 
 
 class Solution:
     def __init__(self, gks, dfs, mfs, fws):
-        # [gk, gk, df, df, df, df, df, mf, mf, mf, mf, mf, fw, fw, fw]
+        # [fw, fw, fw, df, df, df, df, df, mf, mf, mf, mf, mf, gk, gk]
         self.solution = []
         self.value = 0
+
+        self.players = [[], sorted(fws.copy(), key=lambda x: x.evaluation, reverse=True),
+                        sorted(dfs.copy(), key=lambda x: x.evaluation, reverse=True),
+                        sorted(mfs.copy(), key=lambda x: x.evaluation, reverse=True),
+                        sorted(gks.copy(), key=lambda x: x.evaluation, reverse=True)]
+
+        self.number_of_players = [0, len(fws), len(dfs), len(mfs), len(gks)]
+        self.positions = [0, 3, 5, 5, 2]
+        self.same_team = [3 for _ in range(21)]
+
+        i = 1
+        current_best_player_index = 0
+        combination_to_pick = 1
+        while not (combination_to_pick > 5):
+            revert_solution = self.solution.copy()
+            revert_positions = copy.deepcopy(self.positions)
+            revert_same_team = copy.deepcopy(self.same_team)
+            len_of_self_players = len(self.players)
+            if self.players[i][current_best_player_index] in self.solution:
+                current_best_player_index += 1
+                continue
+            self.solution.append(self.players[i][current_best_player_index])
+            self.positions[i] -= 1
+            self.same_team[self.players[i][current_best_player_index].team] -= 1
+            if self.check_worst_case() is False:
+                self.revert_team(revert_solution, revert_positions, revert_same_team)
+                current_best_player_index += 1
+            else:
+                if i < len_of_self_players - 1 and (combination_to_pick == 1 or combination_to_pick == 4):
+                    current_best_player_index = 0
+                    i += 1
+                elif i < len_of_self_players - 2 and combination_to_pick == 2:
+                    current_best_player_index = 0
+                    i += 1
+                elif i < len_of_self_players - 2 and (combination_to_pick == 3 or combination_to_pick == 5):
+                    current_best_player_index = 0
+                    i += 1
+                else:
+                    current_best_player_index = 0
+                    combination_to_pick += 1
+                    if combination_to_pick == 3 or combination_to_pick == 5:
+                        i = 2
+                    else:
+                        i = 1
 
         self.players = [[], gks.copy(), dfs.copy(), mfs.copy(), fws.copy()]
         self.number_of_players = [0, len(gks), len(dfs), len(mfs), len(fws)]
         self.positions = [0, 2, 5, 5, 3]
-        self.same_team = [3 for _ in range(21)]
-
-        i = 1
-        for working_position in self.positions[1:]:
-            while working_position:
-                index = random.randint(0, self.number_of_players[i] - 1)
-                if self.same_team[self.players[i][index].team] == 0:
-                    continue
-                self.solution.append(self.players[i][index])
-                self.positions[i] -= 1
-                self.same_team[self.players[i][index].team] -= 1
-                working_position -= 1
-            i += 1
-
+        self.solution = sorted(self.solution, key=lambda x: x.element_type)
         self.correct_non_feasible()
         self.value_function()
 
-    def value_function(self):
-        fit = 0.0
-        for i in self.solution:
-            fit += i.evaluation
+    def check_worst_case(self):
+        i = 1
+        revert_solution = self.solution.copy()
+        revert_positions = copy.deepcopy(self.positions)
+        revert_same_team = copy.deepcopy(self.same_team)
+        for working_position in self.positions[1:]:
+            worst_player_index = self.number_of_players[i] - 1
+            while working_position:
+                if self.same_team[self.players[i][worst_player_index].team] == 0:
+                    worst_player_index -= 1
+                    continue
 
-        self.value = fit
+                if self.players[i][worst_player_index] in self.solution:
+                    worst_player_index -= 1
+                    continue
+
+                self.solution.append(self.players[i][worst_player_index])
+                self.positions[i] -= 1
+                self.same_team[self.players[i][worst_player_index].team] -= 1
+                working_position -= 1
+            i += 1
+            self.value_function()
+            if self.team_price() > 100.00:
+                self.revert_team(revert_solution, revert_positions, revert_same_team)
+                self.value_function()
+                return False
+        self.revert_team(revert_solution, revert_positions, revert_same_team)
+        return True
+
+    def revert_team(self, revert_solution, revert_positions, revert_same_team):
+        self.solution = revert_solution.copy()
+        self.positions = revert_positions.copy()
+        self.same_team = revert_same_team
+        self.value_function()
+
+    def team_price(self):
+        price = 0.0
+        for i in self.solution:
+            price += (i.now_cost / 10)
+        return price
+
+    def value_function(self):
+        value = 0.0
+        for i in self.solution:
+            value += i.evaluation
+
+        self.value = value
 
     def __lt__(self, other):
         return self.value > other.value
@@ -108,7 +180,7 @@ class Solution:
 
             all_conditions[2] = True
             # Checks price
-            while sum([x.now_cost / 10 for x in self.solution]) > 100.00:
+            while sum([(x.now_cost / 10) for x in self.solution]) > 100.00:
                 all_conditions[2] = False
                 index = random.randint(0, len(self.solution) - 1)
                 kick_player = self.solution[index]
@@ -116,14 +188,24 @@ class Solution:
                 if not self.remove_player_and_add_new_player(kick_player, new_player):
                     continue
 
+    def copy(self):
+        return copy.deepcopy(self.same_team), \
+               self.solution.copy(), \
+               copy.deepcopy(self.number_of_players), \
+               self.players.copy(), \
+               copy.deepcopy(self.value), \
+               copy.deepcopy(self.positions)
+
     def invert(self):
         index = random.randint(0, len(self.solution) - 1)
         kick_player = self.solution[index]
         new_player = self.return_random_player_by_position(kick_player.element_type)
         if not self.remove_player_and_add_new_player(kick_player, new_player):
+            self.solution = sorted(self.solution, key=lambda x: x.element_type)
             return False
         self.correct_non_feasible()
         self.value_function()
+        self.solution = sorted(self.solution, key=lambda x: x.element_type)
         return True
 
     def print_team(self):
@@ -213,6 +295,15 @@ def players_by_position(players=None):
     return gks, dfs, mfs, fws
 
 
+def copy_solution2_to_solution1(solution1, solution2):
+    solution1.same_team, \
+    solution1.solution, \
+    solution1.number_of_players, \
+    solution1.players, \
+    solution1.value, \
+    solution1.positions = solution2.copy()
+
+
 async def main():
     async with aiohttp.ClientSession() as session:
         fpl = FPL(session)
@@ -244,35 +335,39 @@ async def main():
     gks, dfs, mfs, fws = players_by_position(players)
 
     solution = Solution(gks, dfs, mfs, fws)
+    best_solution = Solution(gks, dfs, mfs, fws)
+    revert_solution = Solution(gks, dfs, mfs, fws)
+    new_solution = Solution(gks, dfs, mfs, fws)
 
     current_value = solution.value
+
     best_value = current_value
-    best_solution = copy.copy(solution)
 
     for i in range(1, NUMBER_OF_ITERATIONS):
-        revert_solution = copy.copy(solution)
+        copy_solution2_to_solution1(revert_solution, solution)
         if not solution.invert():
             continue
 
         new_value = solution.value
-        new_solution = copy.copy(solution)
+        copy_solution2_to_solution1(new_solution, solution)
         if new_value > current_value:
             current_value = new_value
-            solution = copy.copy(new_solution)
+            copy_solution2_to_solution1(solution, new_solution)
         else:
             p = 1.0 / i ** 0.5
             q = random.uniform(0, 1)
             if p > q:
                 current_value = new_value
-                solution = copy.copy(new_solution)
+                copy_solution2_to_solution1(solution, new_solution)
             else:
-                solution = copy.copy(revert_solution)
+                copy_solution2_to_solution1(solution, revert_solution)
         if new_value > best_value:
             best_value = new_value
-            best_solution = copy.copy(new_solution)
+            copy_solution2_to_solution1(best_solution, new_solution)
 
-    solution.print_team()
-    print('Price:', sum(x.now_cost / 10 for x in best_solution.solution), "M")
+    best_solution.solution = sorted(best_solution.solution, key=lambda x: x.element_type)
+    best_solution.print_team()
+    print('Price:', sum((x.now_cost / 10) for x in best_solution.solution), "M")
     print('Value:', best_solution.value)
     s_time_stop = time.time()
     print("Finished in:", (s_time_stop - s_time_start), "s")
