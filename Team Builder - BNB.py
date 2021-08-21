@@ -19,7 +19,6 @@ def positionName(posId):
     else:
         return 'forward'
 
-
 def fixtureAnalyzer(players, teams, fixtures, fdr):
     fixturesByTeam = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
     for fix in fixtures:
@@ -38,34 +37,32 @@ def fixtureAnalyzer(players, teams, fixtures, fdr):
         player.average_points_conceded = playerEvaluation / len(fixturesByTeam[team])
         player.fdr = FDRSum / len(fixturesByTeam[team])
 
-
 def normalization(players):
-    # evMin = float('inf')
-    # evMax = float('-inf')
+    evMin = float('inf')
+    evMax = float('-inf')
     tpMin = float('inf')
     tpMax = float('-inf')
-    # formMin = float('inf')
-    # formMax = float('-inf')
+    formMin = float('inf')
+    formMax = float('-inf')
 
     for player in players:
-        # evMin = evMin if evMin < player.average_points_conceded else player.average_points_conceded
-        # evMax = evMax if evMax > player.average_points_conceded else player.average_points_conceded
+        evMin = evMin if evMin < float(player.selected_by_percent) else float(player.selected_by_percent)
+        evMax = evMax if evMax > float(player.selected_by_percent) else float(player.selected_by_percent)
         tpMin = tpMin if tpMin < player.total_points else player.total_points
         tpMax = tpMax if tpMax > player.total_points else player.total_points
-        # formMin = formMin if formMin < float(player.form) else float(player.form)
-        # formMax = formMax if formMax > float(player.form) else float(player.form)
+        formMin = formMin if formMin < float(player.form) else float(player.form)
+        formMax = formMax if formMax > float(player.form) else float(player.form)
 
     for player in players:
-        # player.average_points_conceded = 1 - ((player.average_points_conceded - evMin) / (evMax - evMin))
+        player.selected_by_percent = (float(player.selected_by_percent) - evMin) / (evMax - evMin)
         player.total_points = (player.total_points - tpMin) / (tpMax - tpMin)
-        #player.form = (float(player.form) - formMin) / (formMax - formMin)
+        player.form = (float(player.form) - formMin) / (formMax - formMin)
 
 
 def evaluation(players):
     for player in players:
-        player.evaluation = player.total_points  # +  0.3*player.average_points_conceded + 0.1*player.form
+        player.evaluation = 0.6*player.total_points + 0.3*player.form + 0.2*player.selected_by_percent
         player.evaluation = round(player.evaluation, 2)
-
 
 
 #                               ------- BRANCH AND BOUND -------
@@ -83,18 +80,15 @@ class Node:
         self.positionState = positionState
         self.teamsState = teamsState
 
-
 def decrementList(l, index):
     l[index] -= 1
     return l
-
 
 def positionStateCheck(array):
     for x in array:
         if x < 0:
             return False
     return True
-
 
 def bound(u, knapsackWeight, items):
     if u.weight >= knapsackWeight:
@@ -211,7 +205,7 @@ async def main():
         playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
 
         # Filtering out a certain amount of players for bnb testing
-        filteredParameters1 = [0, 5, 10, 10, 5]
+        filteredParameters1 = [0, 5, 10,10, 5]
         filteredParameters2 = [3 for x in range(21)]
         filteredPlayers = []
         for x in playersSorted:
@@ -224,32 +218,20 @@ async def main():
 
         filteredPlayers = sorted(filteredPlayers, key=lambda player: (player.evaluation), reverse=True)
 
-        # Printing players valuations
-        #
-        # [print(player, "Player value: " + str(player.evaluation)  , "| Average Points Conceded: " + str(player.average_points_conceded), "TP: " + str(player.total_points),
-        #        "Form: " + str(player.form), "FDR: " + str(player.fdr)) for player in filteredPlayers]
-
         # BNB call
-
         knapsackWeight = 100.0
         [value, team] = bnb(knapsackWeight, filteredPlayers)
         sTimeEnd = time.time()
         print(sTimeEnd - sTimeStart, "s")
 
         # Printing team and values
-
         team = sorted(team, key=lambda x: x.element_type)
-        [print(x, x.status, x.element_type, x.now_cost / 10) for x in team]
+        [print(x, x.now_cost / 10, "£") for x in team]
 
         price = sum([x.now_cost / 10 for x in team])
-        print("\nTeam price:", price)
+        print("\nTeam price:", round(price, 2), "£")
+        value = sum([x.evaluation for x in team])
         print("Team value:", value)
-
-        # ToDo: CHECK: key=lambda x: x.total_points/(x.now_cost/10))
-        # ToDo : Create a new player evaluation function:
-        # Ratings based on: Total points, Upcoming FDR, Form , Minutes, Team placement, gw transfers in?
-        # ToDo : Create formation and number of playing subs choices
-
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

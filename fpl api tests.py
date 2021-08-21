@@ -26,12 +26,11 @@ async def main():
             fp.write('\n'.join('%s %s %s' % x for x in lista))
 
 
-        #
+
         # tekme = await team.get_fixtures()
         #
         # [print(x) for x in tekme]
 
-        #----------
 
 
         # fdr = await fpl.FDR()
@@ -88,6 +87,9 @@ async def main():
         # print(kurac)
 
         #print([3 for x in range(21)])
+
+        player = await fpl.get_player(302)
+        print(type(player.selected_by_percent))
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
