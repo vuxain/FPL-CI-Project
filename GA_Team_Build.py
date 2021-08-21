@@ -9,9 +9,9 @@ import asyncio
 from fpl import FPL
 
 # --------------------- GA Constants -----------------------
-POPULATION_SIZE = 1345
-NUMBER_OF_ITERATIONS = 3000
-ELITISM_SIZE = 322
+POPULATION_SIZE = 450
+NUMBER_OF_ITERATIONS = 1000
+ELITISM_SIZE = 9
 TOURNAMENT_SIZE = 5
 MUTATION_RATE = 0.03
 
@@ -104,9 +104,8 @@ class Individual:
                 same_team_players = [x for x in self.code if x.team == team_index]
                 worst_value_payer = float('+inf')
                 worst_player_index = -1
-                # FIX: kick player based on the evaluation #newSeason
                 for i in range(len(same_team_players)):
-                    if same_team_players[i].evaluation / (same_team_players[i].now_cost / 10) < worst_value_payer:
+                    if same_team_players[i].evaluation < worst_value_payer:
                         worst_player_index = i
                 kick_player = same_team_players[worst_player_index]
                 new_player = self.return_random_player_by_position(kick_player.element_type)
