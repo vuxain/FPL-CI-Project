@@ -244,32 +244,30 @@ def fixture_analyzer(players, teams, fixtures, fdr):
 
 
 def normalization(players):
-    ev_min = float('inf')
-    ev_max = float('-inf')
-    tp_min = float('inf')
-    tp_max = float('-inf')
-    form_min = float('inf')
-    form_max = float('-inf')
+    evMin = float('inf')
+    evMax = float('-inf')
+    tpMin = float('inf')
+    tpMax = float('-inf')
+    formMin = float('inf')
+    formMax = float('-inf')
 
     for player in players:
-        # ev_min = ev_min if ev_min < player.average_points_conceded else player.average_points_conceded
-        # ev_max = ev_max if ev_max > player.average_points_conceded else player.average_points_conceded
-        tp_min = tp_min if tp_min < player.total_points else player.total_points
-        tp_max = tp_max if tp_max > player.total_points else player.total_points
-        # form_min = form_min if form_min < float(player.form) else float(player.form)
-        # form_max = form_max if form_max > float(player.form) else float(player.form)
+        evMin = evMin if evMin < float(player.selected_by_percent) else float(player.selected_by_percent)
+        evMax = evMax if evMax > float(player.selected_by_percent) else float(player.selected_by_percent)
+        tpMin = tpMin if tpMin < player.total_points else player.total_points
+        tpMax = tpMax if tpMax > player.total_points else player.total_points
+        formMin = formMin if formMin < float(player.form) else float(player.form)
+        formMax = formMax if formMax > float(player.form) else float(player.form)
 
     for player in players:
-        # player.average_points_conceded = 1 - ((player.average_points_conceded - ev_min) / (ev_max - ev_min))
-        player.total_points = (player.total_points - tp_min) / (tp_max - tp_min)
-        # player.form = (float(player.form) - form_min) / (form_max - form_min)
+        player.selected_by_percent = (float(player.selected_by_percent) - evMin) / (evMax - evMin)
+        player.total_points = (player.total_points - tpMin) / (tpMax - tpMin)
+        player.form = (float(player.form) - formMin) / (formMax - formMin)
 
 
 def evaluation(players):
     for player in players:
-        # TODO: new season
-        # player.evaluation = 0.4 * player.total_points + 0.4 * player.average_points_conceded + 0.2 * player.form
-        player.evaluation = player.total_points
+        player.evaluation = 0.6*player.total_points + 0.3*player.form + 0.2*player.selected_by_percent
         player.evaluation = round(player.evaluation, 2)
 
 
