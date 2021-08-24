@@ -11,9 +11,9 @@ from fpl import FPL
 # --------------------- GA Constants -----------------------
 POPULATION_SIZE = 450
 NUMBER_OF_ITERATIONS = 1000
-ELITISM_SIZE = 9
+ELITISM_SIZE = 3
 TOURNAMENT_SIZE = 5
-MUTATION_RATE = 0.03
+MUTATION_RATE = 0.09
 
 
 # --------------------- GA Individual ---------------------
