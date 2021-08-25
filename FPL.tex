@@ -68,9 +68,12 @@
 
 \begin{document}
 
-\title{Ime projekta\\ \small{Seminarski rad u okviru kursa\\Računarska inteligencija\\ Matematički fakultet}}
+\title{Pravljenje i optimizacija tima u igri \\
+Fantasy Premier League \\ 
+\vspace{2mm} \small {Seminarski rad u okviru kursa\\Računarska inteligencija\\ Matematički fakultet}}
 
-\author{Autor1, Aleksa Voštić\\ email1, akile9v@gmail.com}
+\author{Vukašin Radić, Aleksa Voštić\\ vuksain23@gmail.com, akile9v@gmail.com}
+
 
 %\date{9.~april 2015.}
 
@@ -87,8 +90,27 @@
 \label{sec:uvod}
 
 
-Ovde ide uvod i to je to!
+\subsection{Pravila Fantasy Premier League igre}
+\vspace{3mm} 
+Fantasy Premier League je besplatna online igra u kojoj igrači prave svoj virtuelni tim napravljen od igrača engleske prve lige. Na početku igre, svaki igrač ima na raspolaganju 100.0£ sa kojim mora napraviti virtuelni tim od 15 igrača raznolikih cena. Cilj igre je sakupiti što više bodova tako što igrači predviđaju preformanse svojih virtuelnih igrača u njihovim stvarnim mečevima. Bodovanja se razlikuju od pozicija na kojima su igrači, tako da se za postignute golove, asistencije, sačuvane mreže itd. dobijaju pozitivni poeni, a za promašene penale, autogolove, kartone i primljene golove dobijaju negativni poeni. \\
 
+Pored navedenih ograničenja tima koji ne sme koštati više od 100.0£ (na početku igre) i koji mora brojati 15 virtuelnih igrača, postoje i sledeća:
+\begin{enumerate}
+  \item Tim ne sme sadržati više od 3 igrača koji igraju u istom klubu
+  \item Tim mora sadržati 2 golmana, 5 defanzivaca, 5 veznih igrača i 3 napadača
+\end{enumerate} 
+\vspace{5mm} %5mm vertical space
+Transferi, žetoni, izmene i problem biranja kapitena su deo igre koji ne spada u domen ovog projekta.
+
+
+
+\subsection{Cilj projekta}
+\vspace{3mm}
+Optimizacioni problem kojim se ovaj projekat bavi jeste sastavljanje tima (u skladu sa ograničenjima) tako da se maksimizuje ukupna evaluacija odgovarajućeg tima. Sa obzirom da ne postoji objektivna metrika sa kojom se precizno može oceniti tim, koristili smo se empirijski odabranom kombinacijom parametara i iskustvom vodećih igrača u svetu. \\
+
+U daljem tekstu su opisana četiri različita pristupa algoritamskom rešavanju zadatog problema, kao i upoređivanje njihovih rezultata i vremena izvršavanja u zavisnosti od veličine ulaznog skupa podataka(igrača).
+
+\vspace{5mm} 
 
 \section{Genetski Algoritam}
 Genetski algoritam je zasnovan na Darvinovoj teoriji evolucije tako da u okviru jedne populacije najčešće opstaju samo najbolje prilagođene jedinke. Nove generacije jedinki se dobijaju ukrštanjem jedinki iz prethodne generacije, uzimajući u obzir da se kod nekih jedinki mogu ponekad dešavati mutacije nad njenim genima. Osnovno očekivanje je da se smenom generacija dobijaju populacije jedinki koje su bolje prilagođene u zadatom okruženju. Svaka jedinka je definisana njenim kôdom koji predstavlja skup njenih gena i na osnovu kojih možemo izračunati pomoću odgovarajuće funkcije prilagođenosti koliko se ta jedinka prilagodila okruženju. Ona jedinka koja ima najbolju funkciju prilagođenosti možemo smatrati kao najbolji rezultat koji smo dobili primenom genetskog algoritma. Sam algoritam se svodi na nekoliko važnih koraka koji se ponavljaju odgovarajući broj iteracija:
@@ -165,6 +187,18 @@ Treba naglasiti da je mutacija ipak bila možda i presudni faktor kako bi se alg
 
 \subsection{Elitizam}
 Prilikom pravljenja nove generacije pospukom ukrštanja ili mutacijom, pa kasnije i korektovanjem jedinki, mogu se dešavati situacije u kojima od roditelja koji su dobro prilagođeni dobijamo decu koja su lošije prilagođena od samih roditelja, pa samim tim potencijalno ni nema prostora u evoluciji ka najboljem rešenju. Ovo se u našem slučaju može često događati zbog načina na koji je implementirana korekcija jedinki, pa se zbog toga javila ideja da možda nekoliko najboljih jedinki iz cele populacije direktno prenesemo u narednu generaciju. Iako nam je veličina populacije velika, ispostavilo se da ne trebamo ni previše najboljih jedinki prenositi u narednu generaciju, već samo nekoliko. Ukoliko sačuvamo 1-3 jedinke, algoritam bi se ponašao najbolje.
+
+
+\section{Simulirano kaljenje}
+tvoje
+\section{Branch and Bound}
+moje
+\section{Linearno programiranje}
+moje
+\section{Analiza rezultata}
+Tvoj deo jer imaš bolji komp jbg \\
+Idu grafici i upoređivanje rezultata sva 4 algoritama.
+Naši zaključici od kojih unosa zavisi rezultati algoritama i koji je najbolji/najbrži bla bla
 
 \addcontentsline{toc}{section}{Literatura}
 \appendix
