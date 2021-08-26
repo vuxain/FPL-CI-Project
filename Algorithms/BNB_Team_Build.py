@@ -102,8 +102,6 @@ def bound(u, knapsackWeight, items):
 
     while l < len(items) and tempList1 != [0, 0, 0, 0, 0]:
 
-        # if tempList1[items[l].element_type] <= 0 or tempList2[items[l].team] <= 0 :
-        #     l += 1
         if totalWeight + items[l].now_cost / 10 <= knapsackWeight and tempList1[items[l].element_type] > 0 and \
                 tempList2[items[l].team] > 0:
             totalWeight += items[l].now_cost / 10
@@ -129,24 +127,25 @@ def bnb(knapsackWeight, items):
         if u.level == len(items) - 1:
             continue
 
-        uCopyPositionState = copy.deepcopy(u.positionState)
         uCopyPosition = copy.deepcopy(u.positionState)
         uCopyTeam = copy.deepcopy(u.teamsState)
-        vPotentialState = decrementList(uCopyPositionState, items[u.level + 1].element_type)
+
+        uCopyPositionState = copy.deepcopy(u.positionState)
+        vPotentialPositionState = decrementList(uCopyPositionState, items[u.level + 1].element_type)
 
         uCopyTeamsState = copy.deepcopy(u.teamsState)
         vPotentialTeamsState = decrementList(uCopyTeamsState, items[u.level + 1].team)
 
         # If there is space for the new players position
-        if vPotentialState[items[u.level + 1].element_type] >= 0 and vPotentialTeamsState[items[u.level + 1].team] >= 0:
+        if vPotentialPositionState[items[u.level + 1].element_type] >= 0 and \
+                vPotentialTeamsState[items[u.level + 1].team] >= 0:
             # Left node - Player inserted
             v = Node(u.level + 1, u.weight + items[u.level + 1].now_cost / 10,
                      u.value + items[u.level + 1].evaluation, u, 1, items[u.level + 1].element_type,
-                     vPotentialState, vPotentialTeamsState)
+                     vPotentialPositionState, vPotentialTeamsState)
 
-            if v.weight <= knapsackWeight and v.value > maxValue and v.positionState == [0, 0, 0, 0,
-                                                                                         0] and positionStateCheck(
-                    v.teamsState):
+            if v.weight <= knapsackWeight and v.value > maxValue and\
+                    v.positionState == [0, 0, 0, 0, 0] and positionStateCheck(v.teamsState):
                 maxValue = v.value
                 finalNode = v
 

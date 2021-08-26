@@ -106,7 +106,7 @@ Transferi, žetoni, izmene i problem biranja kapitena su deo igre koji ne spada 
 
 \subsection{Cilj projekta}
 \vspace{3mm}
-Optimizacioni problem kojim se ovaj projekat bavi jeste sastavljanje tima (u skladu sa ograničenjima) tako da se maksimizuje ukupna evaluacija odgovarajućeg tima. Sa obzirom da ne postoji objektivna metrika sa kojom se precizno može oceniti tim, koristili smo se empirijski odabranom kombinacijom parametara i iskustvom vodećih igrača u svetu. \\
+Optimizacioni problem kojim se ovaj projekat bavi jeste sastavljanje tima (u skladu sa ograničenjima) tako da se maksimizuje ukupna evaluacija odgovarajućeg tima. Sa obzirom da ne postoji objektivna metrika sa kojom se precizno može oceniti tim, koristili smo se empirijski odabranom kombinacijom parametara i iskustvom vodećih igrača u svetu.  \cite{FPLExpert}. \\
 
 U daljem tekstu su opisana četiri različita pristupa algoritamskom rešavanju zadatog problema, kao i upoređivanje njihovih rezultata i vremena izvršavanja u zavisnosti od veličine ulaznog skupa podataka(igrača).
 
@@ -192,7 +192,63 @@ Prilikom pravljenja nove generacije pospukom ukrštanja ili mutacijom, pa kasnij
 \section{Simulirano kaljenje}
 tvoje
 \section{Branch and Bound}
-moje
+\vspace{5mm} 
+\subsection{Ideja}
+\vspace{3mm} 
+Može se primetiti da se problem sastavljanja tima može formulisati kao modifikacija problema ranca (eng. Knapsack problem). Težina predmeta predstavlja cena igrača, dok je cena predmeta dodeljena vrednost igrača. Modifikacija podrazumeva implementiranje ograničenja navedenih u uvodu.
+
+\subsection{Struktura podataka}
+\vspace{3mm} 
+Svaki čvor u strukturi podataka stablo, sadrži sledeće atribute: \\
+\begin{itemize}
+	\item \textbf{level} - redni broj nivoa stabla u kom se nalazi čvor
+	\item \textbf{weight} - ukupna cena tima
+	\item \textbf{value} - ukupna vrednost tima
+	\item \textbf{parent} - referenca na roditelja čvora
+	\item \textbf{inserted} - indikator da li je igrač ubačen u tim
+	\item \textbf{position} - pozicija igrača
+	\item \textbf{positionState} - vektor koji predstavlja broj igrača koliko igrača fali na svakoj poziciji ([0,gk,def,mid,att]: [0,2,5,5,3] - tim je prazan, [0,0,0,0,0] - tim je pun)
+	\item \textbf{teamsState}-  vektor koji predstavlja broj dostupnih igrača iz svakog kluba, ([0,3...3] - tim je prazan, [0,2,3...1] - uzeti igrači iz klubova čiji je indeks manji od 3) \\
+	
+	komentar: indeksiranje kreće od 1 radi olakšanog rada sa FPL bibliotekom
+
+\end{itemize}
+
+\subsection{Algoritam}
+\vspace{3mm} 
+
+Algoritam funkcioniše po principu pretrage i odsecanje svih svih mogućih kombinacija igrača koji mogu činiti tim. Igrači, sortirani nerastuće po svojim vrednostima, se redom razmatraju da li ispunjavaju uslov za ulazak u tim njihovog čvora roditelja. Binarno stablo pokriva jedine dve mogućnosti, da li je narednog igrača moguće ubaciti u tim ili ne. Nakon pripreme za obe varijante, grananje se izvršava na sledeći način: 
+
+\begin{enumerate}
+  \item Ubacivanje tekućeg igrača u tim roditelja ukoliko su ispunjeni uslovi 
+  \vspace{1mm}
+  \begin{itemize}
+	\item Kreiraj novi čvor sa ažuriranim vrednostima nivoa,ukupne cene i vrednosti tima, pozicijom na kojoj igra igrač kao i vrednostima vektora pozicije i klubova.  
+	\vspace{1mm}
+	\item Ukoliko je pronađena nova maksimalna vrednost tima, ažuriraj je i zapamti čvor kao potencijalno finalan.
+	\vspace{1mm}
+	\item Poziv funkcije bound koja pohlepnom metodom određuje da li postoji potencijalno bolje rešenje daljim prolazom kroz stablo u dubinu i ubacivanje čvora u stablo ukoliko je odgovor potvrdan.
+	
+  \end{itemize}
+  \vspace{1mm}
+  \item Preskakanje tekućeg igrača 
+  \vspace{1mm}
+  \begin{itemize}
+	\item Kreira se novi čvor sa ažuriranom vrednošću nivoa i precizira da igrač nije odabran, dok se ostale vrednosti preuzimaju od roditelja
+	\vspace{1mm}
+	\item Poziv funkcije bound i upoređivanje sa trenutnim maksimumom
+	
+  \end{itemize}
+\end{enumerate} 
+\vspace{3mm} 
+
+Po završetku izvršavanja algoritama, pamte se maksimalna vrednost tima kao i poslednji čvor preko čijih se referenci na roditelje rekurzivno dobija odabrani tim.
+
+
+
+
+
+
 \section{Linearno programiranje}
 moje
 \section{Analiza rezultata}
