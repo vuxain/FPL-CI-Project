@@ -99,10 +99,10 @@ Fantasy Premier League \\
 \section{Uvod}
 \label{sec:uvod}
 
+Fantasy Premier League je popularna tema istraživanja i analiza iz oblasti optimizacije. Između ostalog, pravljenje i optimizacija tima je jedan od ključnih izazova svakog igrača.
 
 \subsection{Pravila Fantasy Premier League igre}
-\vspace{3mm}
-\label{sec:pravila}
+\vspace{3mm} 
 Fantasy Premier League je besplatna online igra u kojoj igrači prave svoj virtuelni tim napravljen od igrača engleske prve lige. Na početku igre, svaki igrač ima na raspolaganju 100.0£ sa kojim mora napraviti virtuelni tim od 15 igrača raznolikih cena. Cilj igre je sakupiti što više bodova tako što igrači predviđaju preformanse svojih virtuelnih igrača u njihovim stvarnim mečevima. Bodovanja se razlikuju od pozicija na kojima su igrači, tako da se za postignute golove, asistencije, sačuvane mreže itd. dobijaju pozitivni poeni, a za promašene penale, autogolove, kartone i primljene golove dobijaju negativni poeni. \\
 
 Pored navedenih ograničenja tima koji ne sme koštati više od 100.0£ (na početku igre) i koji mora brojati 15 virtuelnih igrača, postoje i sledeća:
@@ -271,10 +271,9 @@ Nakon završetka i poslednje iteracije, krajnje rešenje je ono rešenje koje se
 
 
 \section{Branch and Bound}
-\vspace{5mm} 
-\subsection{Ideja}
+
 \vspace{3mm} 
-Može se primetiti da se problem sastavljanja tima može formulisati kao modifikacija problema ranca \eng{Knapsack problem}. Težina predmeta predstavlja cena igrača, dok je cena predmeta dodeljena vrednost igrača. Modifikacija podrazumeva implementiranje ograničenja navedenih u uvodu.
+Može se primetiti da se problem sastavljanja tima može formulisati kao modifikacija problema ranca (eng. Knapsack problem). Težina predmeta predstavlja cena igrača, dok je cena predmeta dodeljena vrednost igrača. Modifikacija podrazumeva implementiranje ograničenja navedenih u uvodu.
 
 \subsection{Struktura podataka}
 \vspace{3mm} 
@@ -342,6 +341,42 @@ Po završetku izvršavanja algoritama, pamte se maksimalna vrednost tima kao i p
 
 
 \section{Linearno programiranje}
+
+Pored navedenih metoda, prirodno se nameće i linearno celobrojno programiranje kao jedan od mogućih rešenja zadatog problema. PuLP biblioteka u programskog jeziku Python pruža intuitivan intefejs za formulisanje i rešavanje ove klase problema.
+
+\subsection{Modelovanje problema}
+
+Problem sastavljanja tima se može definisati kao problem maksimizacije zbirne procenjene vrednosti tima. Postupak rešavanja probleme se sastoji iz sledećih koraka:
+
+\begin{enumerate}
+  \item \textbf {Definisanje problema} \newline \newline
+    Argumenti koje prima konstruktor klase LpProblem kojom modelujemo problem su naziv problema i tip optimizacije   \newline \newline
+    \texttt{model = pulp.LpProblem("Team value maximisation", pulp.LpMaximize)}
+  \item  \textbf{Uvođenje promenljivih} \newline \newline
+  Za svakog igrača iz skupa podataka se pravi zasebna celobrojna promenljiva \textbf{selectedPlayers[i]} koja može uzeti vrednosti 0 ili 1
+  \item  \textbf{Funkcija cilja} \newline \newline
+  Suma vrednosti odabranih igrača predstavlja vrednost koja se maksimizuje
+  \[ \sum_{n=1}^{N}selectedPlayers[i] * players[i].evaluation  \]
+  N - veličina skupa \newline
+  player.evalation - vrednost tekućeg igrača
+  \item  \textbf{Reprezentacija ograničenja} \newline \newline
+  Ograničenje budžeta
+  \[ \sum_{n=1}^{N}selectedPlayers[i] * \frac{players[i].nowCost}{ 10} \leq 100.0  \] 
+  Ograničenje ukupnog broja igrača
+  \[ \sum_{n=1}^{N}selectedPlayers = 15  \] \newline
+  Ograničenje pozicija: 
+  Neka je $k$ oznaka kategorije igrača (koja se čuva u atributu \texttt{elementType} klase \texttt{player}), $I_k$ skup indeksa svih igrača iz kategorije $k$, i $n_k$ traženi broj igrača iz te kategorije.
+  Ograničenja pozicija biće oblika:\newline
+  \[ (\forall k) \sum_{i \in I_k}selectedPlayers[i] = n_k\]
+  Kategorije igrača su sledeće (u zavisnosti od parametra $k$): 1 - golman, 2 - defanzivac, 3 - vezni igrač, 4 - napadač; vrednosti parametra $n_k$ su redom 2, 3, 5, 5, 3.
+  \newline
+  Ograničenje klubova: Identifikator kluba kome igrač pripada čuva se u polju \texttt{team} klase \texttt{player}. Neka je $C_j$ skup indeksa svih igrača čiji je identifikator kluba jednak $j$. Za svaki klub dodajemo ograničenje oblika:
+  \[\sum_{i \in C_j}selectedPlayers[i] \leq 3\]
+  \item  \textbf{Rešavanje} \newline \newline
+  Pozivanjem metoda \texttt{solve} klase \texttt{LpProblem} biblioteka PuLP pronalazi optimalan rešavač za zadatu formulaciju problema i pokreće ga. Neki od rešavača koje ova biblioteka koristi uključuju CPLEX, GUROBI i COIN\_CMD. Lista dostupnih rešavača dobija se pozivom \texttt{pulp.listSolvers()}.
+  \item  \textbf{Tumačenje Rešenja} \newline \newline
+  Rešavač će svakoj promenljivoj \texttt{selectedPlayers[i]} dodeliti vrednost 1 ili 0, a finalni tim sastojaće se iz svih promenljivih kojima je dodeljena vrednost 1. Igrači iz finalnog tima se prvo sortiraju po svojoj poziciji, pa se njihova imena i klubovi predstavljaju korisniku zajedno sa njihovom cenom, izraženom u milionima funti. Na kraju se štampaju ukupna cena i vrednost finalnog tima, koji se dobijaju sumiranjem pojedinačnih cena i vrednosti odabranih igrača.
+\end{enumerate} 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
