@@ -73,7 +73,7 @@ def linearMethod(players):
 
     nPlayers = len(players)
 
-    model = pulp.LpProblem("Team value maximisation", pulp.LpMaximize)
+    model = pulp.LpProblem("TeamValueMaximisation", pulp.LpMaximize)
 
     selectedPlayers = [
         pulp.LpVariable("x{}".format(i), lowBound=0, upBound=1, cat='Integer')
@@ -120,7 +120,8 @@ async def main():
                 print("Waiting for server to respond...", file=sys.stderr)
                 await asyncio.sleep(3)
 
-        print("Process started", )
+        print("Process started")
+        s_time_start = time.time()
 
         # FPL fetch
         teams = await fpl.get_teams()
@@ -148,6 +149,8 @@ async def main():
         print("\nTeam price:", round(price, 2),"£")
         value = sum([x.evaluation for x in team])
         print("Team value:", value)
+        s_time_stop = time.time()
+        print("Finished in:", round((s_time_stop - s_time_start), 1), "s")
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

@@ -188,7 +188,7 @@ async def main():
 
         print("Process started", )
 
-        sTimeStart = time.time()
+        s_time_start = time.time()
 
         teams = await fpl.get_teams()
         fixtures = list(filter(lambda fix: fix.finished is False, await fpl.get_fixtures()))
@@ -204,7 +204,7 @@ async def main():
         playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
 
         # Filtering out a certain amount of players for bnb testing
-        filteredParameters1 = [0, 5, 10,10, 5]
+        filteredParameters1 = [0, 5, 10, 10, 5]
         filteredParameters2 = [3 for x in range(21)]
         filteredPlayers = []
         for x in playersSorted:
@@ -220,8 +220,6 @@ async def main():
         # BNB call
         knapsackWeight = 100.0
         [value, team] = bnb(knapsackWeight, filteredPlayers)
-        sTimeEnd = time.time()
-        print(sTimeEnd - sTimeStart, "s")
 
         # Printing team and values
         team = sorted(team, key=lambda x: x.element_type)
@@ -230,7 +228,9 @@ async def main():
         price = sum([x.now_cost / 10 for x in team])
         print("\nTeam price:", round(price, 2), "£")
         value = sum([x.evaluation for x in team])
-        print("Team value:", value)
+        print("Team value:", round(value,2))
+        s_time_stop = time.time()
+        print("Finished in:", round((s_time_stop - s_time_start),1), "s")
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

@@ -323,10 +323,10 @@ async def main():
     population = sorted(population, key=lambda individual: individual.fitness, reverse=True)
 
     population[0].print_team()
-    print('Price:', sum(x.now_cost / 10 for x in population[0].code), "M")
-    print('Value:', population[0].fitness)
+    print('Price:', round(sum(x.now_cost / 10 for x in population[0].code),1), "£")
+    print('Value:', round(population[0].fitness,2))
     s_time_stop = time.time()
-    print("Finished in:", (s_time_stop - s_time_start), "s")
+    print("Finished in:", round((s_time_stop - s_time_start),1), "s")
 
 
 if __name__ == "__main__":

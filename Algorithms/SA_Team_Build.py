@@ -365,10 +365,10 @@ async def main():
 
     best_solution.solution = sorted(best_solution.solution, key=lambda x: x.element_type)
     best_solution.print_team()
-    print('Price:', sum((x.now_cost / 10) for x in best_solution.solution), "M")
-    print('Value:', best_solution.value)
+    print('Price:', round(sum((x.now_cost / 10) for x in best_solution.solution),1), "£")
+    print('Value:', round(best_solution.value,2))
     s_time_stop = time.time()
-    print("Finished in:", (s_time_stop - s_time_start), "s")
+    print("Finished in:", round((s_time_stop - s_time_start), 1), "s")
 
 
 if __name__ == "__main__":
