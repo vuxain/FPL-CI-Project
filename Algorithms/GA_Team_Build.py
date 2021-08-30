@@ -123,7 +123,8 @@ class Individual:
                     continue
 
     def print_team(self):
-        [print(x, x.status, x.evaluation, str(x.now_cost / 10) + 'M') for x in self.code]
+        self.code = sorted(self.code, key=lambda x: x.element_type)
+        [print(x, x.status, x.evaluation, str(x.now_cost / 10) + '£') for x in self.code]
         print()
 
 
@@ -322,11 +323,22 @@ async def main():
 
     population = sorted(population, key=lambda individual: individual.fitness, reverse=True)
 
+    # TODO: this is a quick fix, algorithm sometimes passes the budget limit;
+    #  probably bad correct_non_feasible function
+    i = 0
+    for individual in population:
+        individual.fitness_function()
+        if individual.fitness > 100.0:
+            i += 1
+            continue
+        else:
+            break
+
     population[0].print_team()
-    print('Price:', round(sum(x.now_cost / 10 for x in population[0].code),1), "£")
-    print('Value:', round(population[0].fitness,2))
+    print('Price:', round(sum(x.now_cost / 10 for x in population[i].code), 1), "£")
+    print('Value:', round(population[i].fitness, 2))
     s_time_stop = time.time()
-    print("Finished in:", round((s_time_stop - s_time_start),1), "s")
+    print("Finished in:", round((s_time_stop - s_time_start), 1), "s")
 
 
 if __name__ == "__main__":

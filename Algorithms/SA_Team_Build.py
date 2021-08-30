@@ -73,20 +73,25 @@ class Solution:
         revert_solution = self.solution.copy()
         revert_positions = copy.deepcopy(self.positions)
         revert_same_team = copy.deepcopy(self.same_team)
+        worst_players = [[], sorted(self.players[1].copy(), key=lambda x: x.now_cost, reverse=True),
+                        sorted(self.players[2].copy(), key=lambda x: x.now_cost, reverse=True),
+                        sorted(self.players[3].copy(), key=lambda x: x.now_cost, reverse=True),
+                        sorted(self.players[4].copy(), key=lambda x: x.now_cost, reverse=True)]
+
         for working_position in self.positions[1:]:
             worst_player_index = self.number_of_players[i] - 1
             while working_position:
-                if self.same_team[self.players[i][worst_player_index].team] == 0:
+                if self.same_team[worst_players[i][worst_player_index].team] == 0:
                     worst_player_index -= 1
                     continue
 
-                if self.players[i][worst_player_index] in self.solution:
+                if worst_players[i][worst_player_index] in self.solution:
                     worst_player_index -= 1
                     continue
 
-                self.solution.append(self.players[i][worst_player_index])
+                self.solution.append(worst_players[i][worst_player_index])
                 self.positions[i] -= 1
-                self.same_team[self.players[i][worst_player_index].team] -= 1
+                self.same_team[worst_players[i][worst_player_index].team] -= 1
                 working_position -= 1
             i += 1
             self.value_function()
@@ -209,7 +214,7 @@ class Solution:
         return True
 
     def print_team(self):
-        [print(x, x.status, x.evaluation, str(x.now_cost / 10) + 'M') for x in self.solution]
+        [print(x, x.status, x.evaluation, str(x.now_cost / 10) + '£') for x in self.solution]
         print()
 
 
@@ -365,8 +370,8 @@ async def main():
 
     best_solution.solution = sorted(best_solution.solution, key=lambda x: x.element_type)
     best_solution.print_team()
-    print('Price:', round(sum((x.now_cost / 10) for x in best_solution.solution),1), "£")
-    print('Value:', round(best_solution.value,2))
+    print('Price:', round(sum((x.now_cost / 10) for x in best_solution.solution), 1), "£")
+    print('Value:', round(best_solution.value, 2))
     s_time_stop = time.time()
     print("Finished in:", round((s_time_stop - s_time_start), 1), "s")
 
