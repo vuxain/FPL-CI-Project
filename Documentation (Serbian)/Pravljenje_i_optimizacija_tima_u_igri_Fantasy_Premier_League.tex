@@ -9,7 +9,9 @@
 \usepackage[utf8]{inputenc} % make weird characters work
 \usepackage{graphicx}
 \usepackage{fullwidth}
-
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage[english,serbian]{babel}
 
 \usepackage[unicode]{hyperref}
@@ -270,7 +272,7 @@ Nakon završetka i poslednje iteracije, krajnje rešenje je ono rešenje koje se
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-\section{Branch and Bound}
+\section{Pohlepna metoda}
 
 \vspace{3mm} 
 Može se primetiti da se problem sastavljanja tima može formulisati kao modifikacija problema ranca (eng. Knapsack problem). Težina predmeta predstavlja cena igrača, dok je cena predmeta dodeljena vrednost igrača. Modifikacija podrazumeva implementiranje ograničenja navedenih u uvodu.
@@ -304,8 +306,7 @@ Algoritam funkcioniše po principu pretrage i odsecanje svih svih mogućih kombi
 	\item Kreiraj novi čvor sa ažuriranim vrednostima nivoa,ukupne cene i vrednosti tima, pozicijom na kojoj igra igrač kao i vrednostima vektora pozicije i klubova.  
 	\vspace{1mm}
 	\item Ukoliko je pronađena nova maksimalna vrednost tima, ažuriraj je i zapamti čvor kao potencijalno finalan.
-	\vspace{1mm}
-	\item Poziv funkcije bound koja pohlepnom metodom određuje da li postoji potencijalno bolje rešenje daljim prolazom kroz stablo u dubinu i ubacivanje čvora u stablo ukoliko je odgovor potvrdan.
+
 	
   \end{itemize}
   \vspace{1mm}
@@ -313,8 +314,7 @@ Algoritam funkcioniše po principu pretrage i odsecanje svih svih mogućih kombi
   \vspace{1mm}
   \begin{itemize}
 	\item Kreira se novi čvor sa ažuriranom vrednošću nivoa i precizira da igrač nije odabran, dok se ostale vrednosti preuzimaju od roditelja
-	\vspace{1mm}
-	\item Poziv funkcije bound i upoređivanje sa trenutnim maksimumom
+
 	
   \end{itemize}
 \end{enumerate} 
@@ -396,8 +396,72 @@ Problem sastavljanja tima se može definisati kao problem maksimizacije zbirne p
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Analiza rezultata}
-Idu grafici i upoređivanje rezultata sva 4 algoritama.
-Naši zaključici od kojih unosa zavisi rezultati algoritama i koji je najbolji/najbrži
+
+Testiranje se obavilo na konfiguraciji:
+\vspace{3mm} 
+\begin{itemize}
+	\item AMD Ryzen 5 3550H with Radeon Vega Mobile Gfx, 2100 Mhz, 4 Core(s), 8 Logical Processor(s)
+	\item 12.0GB RAM @933MHz
+	\item 476GB SSD Hitachi hfm512gdhtng-8310a 
+	\item Windows 10 Enterprise 64-bit
+
+\end{itemize}
+
+
+
+\subsection{Pohlepni algoritam i Linearno programiranje}
+
+Za ekvivalentne skupove ulaznih podataka očekivano se dobijaju isti rezultati pri izvršavanju oba algoritma (Slika 1). Značajno se razlikuje vreme izvršavanje izraženo u sekundama. (Slika 2). 
+
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.6\textwidth}
+    \includegraphics[width = \textwidth]{img/performance_bar.png}
+    \end{subfigure}
+    \caption{Kvalitet ocene u zavisnosti od veličine skupa}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.5]{img/exectimes.png}
+    \caption{Vreme izvršavanja u zavisnosti od veličine skupa}
+    \label{fig:fig1}
+\end{figure}
+
+\subsection{Genetski algoritam i Simulirano kaljenje}
+
+Empirijski odabranim parametrima za Genetski algoritam (veličina populacija: 450 i broj iteracija: 1000 ) i Simulirano kaljenje ( broj iteracija: 100000), dobijeni su sledeći rezultati (Slika 3. i Slika 4.). Može se zaključiti da je Genetski algoritam konzistentnije dobijao veću vrednost (u nekim iteracijama i optimalnu). Simulirano kaljenje se brže izvršavalo ali po ceni lošijih rezultata i ne dostizanja optimimuma.
+
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+    \includegraphics[width = \textwidth]{img/genetski_plot.png}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+    \includegraphics[width = \textwidth]{img/genetski_tabela.png}
+    \end{subfigure}
+    \caption{Ponašanje genetskog algoritma}
+    \label{fig:my_label}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+    \includegraphics[width = \textwidth]{img/kaljenje_plot.png}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}{0.49\textwidth}
+    \includegraphics[width = \textwidth]{img/kaljenje_tabela.png}
+    \end{subfigure}
+    \caption{Ponašanje algoritma simuliranog kaljenja}
+    \label{fig:my_label}
+\end{figure}
+
+\begin{figure}[H]
+
+\end{figure}
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -411,7 +475,7 @@ Naši zaključici od kojih unosa zavisi rezultati algoritama i koji je najbolji/
 \bibliography{seminarski} 
 \bibliographystyle{plain}
 
-\appendix
+%\appendix
 
 
 \end{document}
