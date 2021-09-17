@@ -114,7 +114,7 @@ def bound(u, knapsackWeight, items):
     return totalValue
 
 
-def bnb(knapsackWeight, items):
+def brute_force(knapsackWeight, items):
     Q = []
     u = Node(-1, 0, 0, None, 0, None, [0, 2, 5, 5, 3], [3 for x in range(21)])
     Q.append(u)
@@ -203,7 +203,7 @@ async def main():
         evaluation(players)
         playersSorted = sorted(players, key=lambda player: player.evaluation, reverse=True)
 
-        # Filtering out a certain amount of players for bnb testing
+        # Filtering out a certain amount of players for brute_force testing
         filteredParameters1 = [0, 5, 10, 10, 5]
         filteredParameters2 = [3 for x in range(21)]
         filteredPlayers = []
@@ -217,9 +217,9 @@ async def main():
 
         filteredPlayers = sorted(filteredPlayers, key=lambda player: (player.evaluation), reverse=True)
 
-        # BNB call
+        # Brute force call
         knapsackWeight = 100.0
-        [value, team] = bnb(knapsackWeight, filteredPlayers)
+        [value, team] = brute_force(knapsackWeight, filteredPlayers)
 
         # Printing team and values
         team = sorted(team, key=lambda x: x.element_type)
