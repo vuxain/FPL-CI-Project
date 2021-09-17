@@ -83,7 +83,7 @@ Fantasy Premier League \\
 \maketitle
 
 
-\abstract{Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.Kratki sazetak.}
+\abstract{Rešavanje problema pravljenja tima u igri FPL (bench boost varijanta od 15 igrača), korišćenjem i upoređivanjem rezultata različitih algoritama računarske inteligencije.}
 
 \tableofcontents
 
@@ -133,6 +133,128 @@ U daljem tekstu su opisana četiri različita pristupa algoritamskom rešavanju 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Pocetak dela (za menjanje pitati autora ovog dela)
+% autor: Vukašin Radić
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Metoda grube sile}
+
+\vspace{3mm} 
+Može se primetiti da se problem sastavljanja tima može formulisati kao modifikacija problema ranca (eng. Knapsack problem). Težina predmeta predstavlja cena igrača, dok je cena predmeta dodeljena vrednost igrača. Modifikacija podrazumeva implementiranje ograničenja navedenih u uvodu.
+
+\subsection{Struktura podataka}
+\vspace{3mm} 
+Svaki čvor u strukturi podataka stablo, sadrži sledeće atribute: \\
+\begin{itemize}
+	\item \textbf{level} - redni broj nivoa stabla u kom se nalazi čvor
+	\item \textbf{weight} - ukupna cena tima
+	\item \textbf{value} - ukupna vrednost tima
+	\item \textbf{parent} - referenca na roditelja čvora
+	\item \textbf{inserted} - indikator da li je igrač ubačen u tim
+	\item \textbf{position} - pozicija igrača
+	\item \textbf{positionState} - vektor koji predstavlja broj igrača koliko igrača fali na svakoj poziciji ([0,gk,def,mid,att]: [0,2,5,5,3] - tim je prazan, [0,0,0,0,0] - tim je pun)
+	\item \textbf{teamsState} -  vektor koji predstavlja broj dostupnih igrača iz svakog kluba, ([0,3...3] - tim je prazan, [0,2,3...1] - uzeti igrači iz klubova čiji je indeks manji od 3) \\
+	
+	komentar: indeksiranje kreće od 1 radi olakšanog rada sa FPL bibliotekom
+
+\end{itemize}
+
+\subsection{Algoritam}
+\vspace{3mm} 
+
+Algoritam funkcioniše po principu pretrage i odsecanje svih svih mogućih kombinacija igrača koji mogu činiti tim. Igrači, sortirani nerastuće po svojim vrednostima, se redom razmatraju da li ispunjavaju uslov za ulazak u tim njihovog čvora roditelja. Binarno stablo pokriva jedine dve mogućnosti, da li je narednog igrača moguće ubaciti u tim ili ne. Nakon pripreme za obe varijante, grananje se izvršava na sledeći način: 
+
+\begin{enumerate}
+  \item Ubacivanje tekućeg igrača u tim roditelja ukoliko su ispunjeni uslovi 
+  \vspace{1mm}
+  \begin{itemize}
+	\item Kreiraj novi čvor sa ažuriranim vrednostima nivoa,ukupne cene i vrednosti tima, pozicijom na kojoj igra igrač kao i vrednostima vektora pozicije i klubova.  
+	\vspace{1mm}
+	\item Ukoliko je pronađena nova maksimalna vrednost tima, ažuriraj je i zapamti čvor kao potencijalno finalan.
+
+	
+  \end{itemize}
+  \vspace{1mm}
+  \item Preskakanje tekućeg igrača 
+  \vspace{1mm}
+  \begin{itemize}
+	\item Kreira se novi čvor sa ažuriranom vrednošću nivoa i precizira da igrač nije odabran, dok se ostale vrednosti preuzimaju od roditelja
+
+	
+  \end{itemize}
+\end{enumerate} 
+\vspace{3mm} 
+
+Po završetku izvršavanja algoritama, pamte se maksimalna vrednost tima kao i poslednji čvor preko čijih se referenci na roditelje rekurzivno dobija odabrani tim.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Kraj dela (za menjanje pitati autora ovog dela)
+% autor: Vukašin Radić
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Pocetak dela (za menjanje pitati autora ovog dela)
+% autor: Vukašin Radić
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Linearno programiranje}
+
+Pored navedenih metoda, prirodno se nameće i linearno celobrojno programiranje kao jedan od mogućih rešenja zadatog problema. PuLP biblioteka u programskog jeziku Python pruža intuitivan intefejs za formulisanje i rešavanje ove klase problema.
+
+\subsection{Modelovanje problema}
+
+Problem sastavljanja tima se može definisati kao problem maksimizacije zbirne procenjene vrednosti tima. Postupak rešavanja probleme se sastoji iz sledećih koraka:
+
+\begin{enumerate}
+  \item \textbf {Definisanje problema} \newline \newline
+    Argumenti koje prima konstruktor klase LpProblem kojom modelujemo problem su naziv problema i tip optimizacije   \newline \newline
+    \texttt{model = pulp.LpProblem("Team value maximisation", pulp.LpMaximize)}
+  \item  \textbf{Uvođenje promenljivih} \newline \newline
+  Za svakog igrača iz skupa podataka se pravi zasebna celobrojna promenljiva \textbf{selectedPlayers[i]} koja može uzeti vrednosti 0 ili 1
+  \item  \textbf{Funkcija cilja} \newline \newline
+  Suma vrednosti odabranih igrača predstavlja vrednost koja se maksimizuje
+  \[ \sum_{n=1}^{N}selectedPlayers[i] * players[i].evaluation  \]
+  N - veličina skupa \newline
+  player.evalation - vrednost tekućeg igrača
+  \item  \textbf{Reprezentacija ograničenja} \newline \newline
+  Ograničenje budžeta
+  \[ \sum_{n=1}^{N}selectedPlayers[i] * \frac{players[i].nowCost}{ 10} \leq 100.0  \] 
+  Ograničenje ukupnog broja igrača
+  \[ \sum_{n=1}^{N}selectedPlayers = 15  \] \newline
+  Ograničenje pozicija: 
+  Neka je $k$ oznaka kategorije igrača (koja se čuva u atributu \texttt{elementType} klase \texttt{player}), $I_k$ skup indeksa svih igrača iz kategorije $k$, i $n_k$ traženi broj igrača iz te kategorije.
+  Ograničenja pozicija biće oblika:\newline
+  \[ (\forall k) \sum_{i \in I_k}selectedPlayers[i] = n_k\]
+  Kategorije igrača su sledeće (u zavisnosti od parametra $k$): 1 - golman, 2 - defanzivac, 3 - vezni igrač, 4 - napadač; vrednosti parametra $n_k$ su redom 2, 3, 5, 5, 3.
+  \newline
+  Ograničenje klubova: Identifikator kluba kome igrač pripada čuva se u polju \texttt{team} klase \texttt{player}. Neka je $C_j$ skup indeksa svih igrača čiji je identifikator kluba jednak $j$. Za svaki klub dodajemo ograničenje oblika:
+  \[\sum_{i \in C_j}selectedPlayers[i] \leq 3\]
+  \item  \textbf{Rešavanje} \newline \newline
+  Pozivanjem metoda \texttt{solve} klase \texttt{LpProblem} biblioteka PuLP pronalazi optimalan rešavač za zadatu formulaciju problema i pokreće ga. Neki od rešavača koje ova biblioteka koristi uključuju CPLEX, GUROBI i COIN\_CMD. Lista dostupnih rešavača dobija se pozivom \texttt{pulp.listSolvers()}.
+  \item  \textbf{Tumačenje Rešenja} \newline \newline
+  Rešavač će svakoj promenljivoj \texttt{selectedPlayers[i]} dodeliti vrednost 1 ili 0, a finalni tim sastojaće se iz svih promenljivih kojima je dodeljena vrednost 1. Igrači iz finalnog tima se prvo sortiraju po svojoj poziciji, pa se njihova imena i klubovi predstavljaju korisniku zajedno sa njihovom cenom, izraženom u milionima funti. Na kraju se štampaju ukupna cena i vrednost finalnog tima, koji se dobijaju sumiranjem pojedinačnih cena i vrednosti odabranih igrača.
+\end{enumerate} 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Kraj dela (za menjanje pitati autora ovog dela)
+% autor: Vukašin Radić
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -264,129 +386,6 @@ Nakon završetka i poslednje iteracije, krajnje rešenje je ono rešenje koje se
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Pocetak dela (za menjanje pitati autora ovog dela)
-% autor: Vukašin Radić
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-\section{Pohlepna metoda}
-
-\vspace{3mm} 
-Može se primetiti da se problem sastavljanja tima može formulisati kao modifikacija problema ranca (eng. Knapsack problem). Težina predmeta predstavlja cena igrača, dok je cena predmeta dodeljena vrednost igrača. Modifikacija podrazumeva implementiranje ograničenja navedenih u uvodu.
-
-\subsection{Struktura podataka}
-\vspace{3mm} 
-Svaki čvor u strukturi podataka stablo, sadrži sledeće atribute: \\
-\begin{itemize}
-	\item \textbf{level} - redni broj nivoa stabla u kom se nalazi čvor
-	\item \textbf{weight} - ukupna cena tima
-	\item \textbf{value} - ukupna vrednost tima
-	\item \textbf{parent} - referenca na roditelja čvora
-	\item \textbf{inserted} - indikator da li je igrač ubačen u tim
-	\item \textbf{position} - pozicija igrača
-	\item \textbf{positionState} - vektor koji predstavlja broj igrača koliko igrača fali na svakoj poziciji ([0,gk,def,mid,att]: [0,2,5,5,3] - tim je prazan, [0,0,0,0,0] - tim je pun)
-	\item \textbf{teamsState}-  vektor koji predstavlja broj dostupnih igrača iz svakog kluba, ([0,3...3] - tim je prazan, [0,2,3...1] - uzeti igrači iz klubova čiji je indeks manji od 3) \\
-	
-	komentar: indeksiranje kreće od 1 radi olakšanog rada sa FPL bibliotekom
-
-\end{itemize}
-
-\subsection{Algoritam}
-\vspace{3mm} 
-
-Algoritam funkcioniše po principu pretrage i odsecanje svih svih mogućih kombinacija igrača koji mogu činiti tim. Igrači, sortirani nerastuće po svojim vrednostima, se redom razmatraju da li ispunjavaju uslov za ulazak u tim njihovog čvora roditelja. Binarno stablo pokriva jedine dve mogućnosti, da li je narednog igrača moguće ubaciti u tim ili ne. Nakon pripreme za obe varijante, grananje se izvršava na sledeći način: 
-
-\begin{enumerate}
-  \item Ubacivanje tekućeg igrača u tim roditelja ukoliko su ispunjeni uslovi 
-  \vspace{1mm}
-  \begin{itemize}
-	\item Kreiraj novi čvor sa ažuriranim vrednostima nivoa,ukupne cene i vrednosti tima, pozicijom na kojoj igra igrač kao i vrednostima vektora pozicije i klubova.  
-	\vspace{1mm}
-	\item Ukoliko je pronađena nova maksimalna vrednost tima, ažuriraj je i zapamti čvor kao potencijalno finalan.
-
-	
-  \end{itemize}
-  \vspace{1mm}
-  \item Preskakanje tekućeg igrača 
-  \vspace{1mm}
-  \begin{itemize}
-	\item Kreira se novi čvor sa ažuriranom vrednošću nivoa i precizira da igrač nije odabran, dok se ostale vrednosti preuzimaju od roditelja
-
-	
-  \end{itemize}
-\end{enumerate} 
-\vspace{3mm} 
-
-Po završetku izvršavanja algoritama, pamte se maksimalna vrednost tima kao i poslednji čvor preko čijih se referenci na roditelje rekurzivno dobija odabrani tim.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Kraj dela (za menjanje pitati autora ovog dela)
-% autor: Vukašin Radić
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Pocetak dela (za menjanje pitati autora ovog dela)
-% autor: Vukašin Radić
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-\section{Linearno programiranje}
-
-Pored navedenih metoda, prirodno se nameće i linearno celobrojno programiranje kao jedan od mogućih rešenja zadatog problema. PuLP biblioteka u programskog jeziku Python pruža intuitivan intefejs za formulisanje i rešavanje ove klase problema.
-
-\subsection{Modelovanje problema}
-
-Problem sastavljanja tima se može definisati kao problem maksimizacije zbirne procenjene vrednosti tima. Postupak rešavanja probleme se sastoji iz sledećih koraka:
-
-\begin{enumerate}
-  \item \textbf {Definisanje problema} \newline \newline
-    Argumenti koje prima konstruktor klase LpProblem kojom modelujemo problem su naziv problema i tip optimizacije   \newline \newline
-    \texttt{model = pulp.LpProblem("Team value maximisation", pulp.LpMaximize)}
-  \item  \textbf{Uvođenje promenljivih} \newline \newline
-  Za svakog igrača iz skupa podataka se pravi zasebna celobrojna promenljiva \textbf{selectedPlayers[i]} koja može uzeti vrednosti 0 ili 1
-  \item  \textbf{Funkcija cilja} \newline \newline
-  Suma vrednosti odabranih igrača predstavlja vrednost koja se maksimizuje
-  \[ \sum_{n=1}^{N}selectedPlayers[i] * players[i].evaluation  \]
-  N - veličina skupa \newline
-  player.evalation - vrednost tekućeg igrača
-  \item  \textbf{Reprezentacija ograničenja} \newline \newline
-  Ograničenje budžeta
-  \[ \sum_{n=1}^{N}selectedPlayers[i] * \frac{players[i].nowCost}{ 10} \leq 100.0  \] 
-  Ograničenje ukupnog broja igrača
-  \[ \sum_{n=1}^{N}selectedPlayers = 15  \] \newline
-  Ograničenje pozicija: 
-  Neka je $k$ oznaka kategorije igrača (koja se čuva u atributu \texttt{elementType} klase \texttt{player}), $I_k$ skup indeksa svih igrača iz kategorije $k$, i $n_k$ traženi broj igrača iz te kategorije.
-  Ograničenja pozicija biće oblika:\newline
-  \[ (\forall k) \sum_{i \in I_k}selectedPlayers[i] = n_k\]
-  Kategorije igrača su sledeće (u zavisnosti od parametra $k$): 1 - golman, 2 - defanzivac, 3 - vezni igrač, 4 - napadač; vrednosti parametra $n_k$ su redom 2, 3, 5, 5, 3.
-  \newline
-  Ograničenje klubova: Identifikator kluba kome igrač pripada čuva se u polju \texttt{team} klase \texttt{player}. Neka je $C_j$ skup indeksa svih igrača čiji je identifikator kluba jednak $j$. Za svaki klub dodajemo ograničenje oblika:
-  \[\sum_{i \in C_j}selectedPlayers[i] \leq 3\]
-  \item  \textbf{Rešavanje} \newline \newline
-  Pozivanjem metoda \texttt{solve} klase \texttt{LpProblem} biblioteka PuLP pronalazi optimalan rešavač za zadatu formulaciju problema i pokreće ga. Neki od rešavača koje ova biblioteka koristi uključuju CPLEX, GUROBI i COIN\_CMD. Lista dostupnih rešavača dobija se pozivom \texttt{pulp.listSolvers()}.
-  \item  \textbf{Tumačenje Rešenja} \newline \newline
-  Rešavač će svakoj promenljivoj \texttt{selectedPlayers[i]} dodeliti vrednost 1 ili 0, a finalni tim sastojaće se iz svih promenljivih kojima je dodeljena vrednost 1. Igrači iz finalnog tima se prvo sortiraju po svojoj poziciji, pa se njihova imena i klubovi predstavljaju korisniku zajedno sa njihovom cenom, izraženom u milionima funti. Na kraju se štampaju ukupna cena i vrednost finalnog tima, koji se dobijaju sumiranjem pojedinačnih cena i vrednosti odabranih igrača.
-\end{enumerate} 
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Kraj dela (za menjanje pitati autora ovog dela)
-% autor: Vukašin Radić
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -409,7 +408,7 @@ Testiranje se obavilo na konfiguraciji:
 
 
 
-\subsection{Pohlepni algoritam i Linearno programiranje}
+\subsection{Metoda grube sile i Linearno programiranje}
 
 Za ekvivalentne skupove ulaznih podataka očekivano se dobijaju isti rezultati pri izvršavanju oba algoritma (Slika 1). Značajno se razlikuje vreme izvršavanje izraženo u sekundama. (Slika 2). 
 
@@ -425,7 +424,7 @@ Za ekvivalentne skupove ulaznih podataka očekivano se dobijaju isti rezultati p
 \begin{figure}[H]
     \centering
     \includegraphics[scale=0.5]{img/exectimes.png}
-    \caption{Vreme izvršavanja u zavisnosti od veličine skupa}
+    \caption{Vreme izvršavanja (sekunde) u zavisnosti od veličine skupa (broj igrača)}
     \label{fig:fig1}
 \end{figure}
 
